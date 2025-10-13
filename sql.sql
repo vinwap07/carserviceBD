@@ -177,9 +177,11 @@ CREATE TABLE client_order_services (
 
 
 
+
 SELECT table_name 
 FROM information_schema.tables 
 WHERE table_schema = 'public';
+
 
 
 
@@ -402,6 +404,9 @@ INSERT INTO client_order_services (id_order, service_price_id, quantity, unit_pr
 (4, 9, 1, 10000),   -- Замена ламп
 (5, 6, 1, 40000),   -- Шиномонтаж
 (5, 7, 1, 60000);   -- Развал-схождение
+
+
+
 
 --1.1
 SELECT *
