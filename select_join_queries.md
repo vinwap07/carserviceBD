@@ -7,9 +7,10 @@ FROM employee;
 ```
 РЕЗУЛЬТАТ ВЫПОЛЕНЕНИЯ ЗАПРОСА - ![Скриншот](screenshots/1.1.png)
 
-1.2.
+1.2. Все услуги, предоставляемые автосервисом
 ```sql
-
+SELECT * 
+FROM service;
 ```
 РЕЗУЛЬТАТ ВЫПОЛЕНЕНИЯ ЗАПРОСА - ![Скриншот](screenshots/1.2.png)
 
@@ -32,9 +33,11 @@ FROM client;
 
 ### 3. Присвоение новых имен столбцам при формировании выборки (as) 
 
-3.1.
+3.1. Информация о имени и номере телефона каждого сотрудника
 ```sql
-
+SELECT full_name AS "Имя", 
+    phone_number AS "Телефон"
+FROM employee;
 ```
 
 РЕЗУЛЬТАТ ВЫПОЛЕНЕНИЯ ЗАПРОСА  - ![Скриншот](screenshots/3.1.png)
@@ -56,9 +59,13 @@ FROM client_order;
 
 РЕЗУЛЬТАТ ВЫПОЛЕНЕНИЯ ЗАПРОСА  - ![Скриншот](screenshots/4.1.png)
 
-4.2.
+4.2. ID смены, время начала и конца, ее продолжительность
 ```sql
-
+SELECT id, 
+    start_time, 
+    end_time, 
+    end_time - start_time AS "Продолжительность смены"
+FROM shift_schedule;
 ```
 
 РЕЗУЛЬТАТ ВЫПОЛЕНЕНИЯ ЗАПРОСА - ![Скриншот](screenshots/4.2.png)
@@ -86,9 +93,16 @@ FROM employee;
 
 ### 6. Выборка данных, вычисляемые столбцы, логические функции (case, when, else, end) 
 
-6.1.
+6.1. ID, итоговая сумма заказа. В зависимости от итоговой суммы вычисляется скидка
 ```sql
-
+SELECT id, 
+	total_amount, 
+	CASE 
+		WHEN total_amount > 100000 THEN total_amount*0.95
+		WHEN total_amount > 200000 THEN total_amount*0.9
+		ELSE total_amount
+	END AS sale
+FROM client_order;
 ```
 
 РЕЗУЛЬТАТ ВЫПОЛЕНЕНИЯ ЗАПРОСА - ![Скриншот](screenshots/6.1.png)
@@ -112,9 +126,11 @@ WHERE car.color = 'Черный';
 
 РЕЗУЛЬТАТ ВЫПОЛЕНЕНИЯ ЗАПРОСА - ![Скриншот](screenshots/7.1.png)
 
-7.2.
+7.2. Сотрудники, которые на данный момент работают
 ```sql
-
+SELECT *
+FROM employee 
+WHERE status = 'работает';
 ```
 
 РЕЗУЛЬТАТ ВЫПОЛЕНЕНИЯ ЗАПРОСА - ![Скриншот](screenshots/7.2.png)
@@ -139,9 +155,12 @@ WHERE total_amount > 500000 OR priority IN ('высокий', 'срочный');
 
 ### 9. Выборка данных, операторы BETWEEN, IN 
 
-9.1.
+9.1. Услуги, стоимость которых меньше 30 тысяч и больше 15 тысяч
 ```sql
-
+SELECT name, 
+	base_price
+FROM service 
+WHERE base_price BETWEEN 15000 AND 30000;
 ```
 
 РЕЗУЛЬТАТ ВЫПОЛЕНЕНИЯ ЗАПРОСА - ![Скриншот](screenshots/9.1.png)
