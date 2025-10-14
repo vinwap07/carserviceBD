@@ -324,12 +324,9 @@ SELECT l.address,
 
 ### 17. CROSS JOIN
 
-17.1. Все возможные пары клиент-машина, где машина выпустилась позже 2019 года и синего цвета
+17.1. 
 ```sql
- SELECT full_name, 
- 	license_plate
- FROM client, car
- WHERE car."year" > 2019 AND car.color = 'Синий';
+
 ```
 
 РЕЗУЛЬТАТ ВЫПОЛЕНЕНИЯ ЗАПРОСА - ![Скриншот](screenshots/17.1.png)
@@ -348,20 +345,20 @@ CROSS JOIN location;
 
 ### 18. OUTER JOIN
 
-18.1.
-```sql
-
-```
-
-РЕЗУЛЬТАТ ВЫПОЛЕНЕНИЯ ЗАПРОСА - ![Скриншот](screenshots/18.1.png)
-
-18.2. Все заказы со стоимостью заказанных товаров и без
+18.1. Все заказы со стоимостью заказанных товаров и без
 ```sql
 SELECT client_order.id, 
 	total_price
 FROM client_order 
 FULL OUTER JOIN client_order_items
 	ON client_order.id = client_order_items.id_order;
+```
+
+РЕЗУЛЬТАТ ВЫПОЛЕНЕНИЯ ЗАПРОСА - ![Скриншот](screenshots/18.1.png)
+
+18.2. 
+```sql
+
 ```
 
 РЕЗУЛЬТАТ ВЫПОЛЕНЕНИЯ ЗАПРОСА - ![Скриншот](screenshots/18.2.png)
