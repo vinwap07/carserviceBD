@@ -203,9 +203,12 @@ END;
 
 РЕЗУЛЬТАТ ВЫПОЛЕНЕНИЯ ЗАПРОСА - ![Скриншот](screenshots/10.1.png)
 
-10.2.
+10.2. Правила лояльности от самого большого процента скидки до самого маленького
 ```sql
-
+SELECT discount_percent, 
+	level_name
+FROM loyalty_rules 
+ORDER BY discount_percent DESC;
 ```
 
 РЕЗУЛЬТАТ ВЫПОЛЕНЕНИЯ ЗАПРОСА - ![Скриншот](screenshots/10.2.png)
@@ -232,9 +235,10 @@ WHERE name LIKE 'Замен%';
 
 ### 12. Выбор уникальных элементов столбца (DISTINCT) 
 
-12.1.
+12.1. Все бренды автомобилей
 ```sql
-
+SELECT DISTINCT brand_name
+FROM car_model;
 ```
 
 РЕЗУЛЬТАТ ВЫПОЛЕНЕНИЯ ЗАПРОСА - ![Скриншот](screenshots/12.1.png)
@@ -258,9 +262,13 @@ LIMIT 4 OFFSET 1;
 
 РЕЗУЛЬТАТ ВЫПОЛЕНЕНИЯ ЗАПРОСА - ![Скриншот](screenshots/13.1.png)
 
-13.2.
+13.2. Топ 3 самые дорогие услуги
 ```sql
-
+SELECT name, 
+	base_price
+FROM service 
+ORDER BY base_price DESC
+LIMIT 3;
 ```
 
 РЕЗУЛЬТАТ ВЫПОЛЕНЕНИЯ ЗАПРОСА - ![Скриншот](screenshots/13.2.png)
@@ -294,9 +302,12 @@ INNER JOIN location l ON ss.location_id = l.id;
 
 ### 15. LEFT JOIN
 
-15.1.
+15.1. Вывести все точки автосервиса с их сотрудниками, если у точки сотрудника нет - NULL 
 ```sql
-
+SELECT address, 
+	full_name 
+FROM "location" LEFT JOIN employee 
+	ON "location".id = employee.location_id;
 ```
 
 РЕЗУЛЬТАТ ВЫПОЛЕНЕНИЯ ЗАПРОСА - ![Скриншот](screenshots/15.1.png)
@@ -322,9 +333,14 @@ ON client.id = loyalty_card.id_client;
 
 РЕЗУЛЬТАТ ВЫПОЛЕНЕНИЯ ЗАПРОСА - ![Скриншот](screenshots/16.1.png)
 
-16.2.
+16.2. Все возможные адреса точек и товар в наличии на них
 ```sql
-
+SELECT l.address, 
+ 	r.article, 
+ 	r.quantity  
+ FROM remains_of_goods r
+ RIGHT JOIN "location" l 
+ 	ON  r.location_id = l.id
 ```
 
 РЕЗУЛЬТАТ ВЫПОЛЕНЕНИЯ ЗАПРОСА - ![Скриншот](screenshots/16.2.png)
@@ -354,9 +370,13 @@ CROSS JOIN location;
 
 ### 18. OUTER JOIN
 
-18.1.
+18.1. Все заказы со стоимостью заказанных товаров и без
 ```sql
-
+SELECT client_order.id, 
+	total_price
+FROM client_order 
+FULL OUTER JOIN client_order_items
+	ON client_order.id = client_order_items.id_order;
 ```
 
 РЕЗУЛЬТАТ ВЫПОЛЕНЕНИЯ ЗАПРОСА - ![Скриншот](screenshots/18.1.png)
