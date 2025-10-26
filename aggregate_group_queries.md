@@ -1,4 +1,4 @@
-### 1. Агрегатная функция COUNT()
+<img width="49" height="71" alt="image" src="https://github.com/user-attachments/assets/33c3f66e-3ce3-4cb3-a83d-f45cee9e898a" />### 1. Агрегатная функция COUNT()
 
 1.1. Количество выполненных заказов клиентов
 ```sql
@@ -8,9 +8,11 @@ WHERE status = 'выполнен';
 ```
 ![Скриншот](screenshots1/1.1.png)
 
-1.2. 
+1.2. Количество устроенных работников
 ```sql
-
+SELECT count(*) AS number_of_employees
+FROM employee 
+WHERE status = 'работает';
 ```
 ![Скриншот](screenshots1/1.2.png)
 
@@ -35,9 +37,10 @@ WHERE address = 'ул. Ленина, 25, Москва';
 
 ### 3. Агрегатная функция AVG()
 
-3.1. 
+3.1. Средний чек заказа клиента
 ```sql
-
+SELECT avg(total_price) AS middle
+FROM client_order_items;
 ```
 
 ![Скриншот](screenshots1/3.1.png)
@@ -59,9 +62,10 @@ FROM loyalty_card;
 
 ![Скриншот](screenshots1/4.1.png)
 
-4.2. 
+4.2. Наименьшая цена на товар
 ```sql
-
+SELECT min(price) AS min_price
+FROM product_prices;
 ```
 
 ![Скриншот](screenshots1/4.2.png)
@@ -84,9 +88,10 @@ FROM loyalty_card;
 ![Скриншот](screenshots1/5.2.png)
 
 ### 6. Агрегатная функция STRING_AGG()
-6.1. 
+6.1. Вывод всех названий продуктов как единой строки
 ```sql
-
+SELECT string_agg(name, ',')
+FROM nomenclature;
 ```
 
 ![Скриншот](screenshots1/6.1.png)
@@ -113,9 +118,16 @@ FROM client_order;
 
 ![Скриншот](screenshots1/7.1.png)
 
-7.2.
+7.2. Общие данные по ценам на продаваемые продукты - их количество, средняя цена, минимальная и максимальная
 ```sql
-
+SELECT 
+    COUNT(*) AS products_count,
+    SUM(p_p.price) AS total_sum_of_products,
+    ROUND(AVG(p_p.price), 2) AS middle_price,
+    MIN(p_p.price) AS min_price,
+    MAX(p_p.price) AS max_price
+FROM nomenclature n
+INNER JOIN product_prices p_p ON n.article = p_p.article;
 ```
 
 ![Скриншот](screenshots1/7.2.png)
@@ -140,9 +152,13 @@ GROUP BY priority;
 
 ### 9. Фильтрация групп (HAVING)
 
-9.1. 
+9.1. Все локации, где работает более 1 сотрудника
 ```sql
-
+SELECT location_id, COUNT(*) AS working_employees
+FROM employee
+WHERE status = 'работает'
+GROUP BY location_id
+HAVING COUNT(*) > 1;
 ```
 
 ![Скриншот](screenshots1/9.1.png)
@@ -167,9 +183,22 @@ ORDER BY position, status;
 
 ![Скриншот](screenshots1/10.1.png)
 
-10.2. 
+10.2. Остатки каждого товара, сумма остатков по каждому филиалу и по всем 
 ```sql
-
+SELECT 
+    l.address AS location,
+    n.name AS product_name,
+    SUM(rog.quantity) AS total_quantity
+FROM remains_of_goods rog
+JOIN location l ON rog.location_id = l.id
+JOIN nomenclature n ON rog.article = n.article
+GROUP BY GROUPING SETS (
+    (l.address, n.name),
+    (l.address),
+    (n.name),
+    ()
+)
+ORDER BY l.address, n.name;
 ```
 
 ![Скриншот](screenshots1/10.2.png)
@@ -196,9 +225,15 @@ ORDER BY brand_name, model_name;
 
 ### 12. Расширенная группировка - CUBE
 
-12.1. 
+12.1. Анализ статусов сотруников
 ```sql
-
+SELECT 
+    position,
+    status,
+    COUNT(*) AS count
+FROM employee
+GROUP BY CUBE(position, status)
+ORDER BY position, status;
 ```
 
 ![Скриншот](screenshots1/12.1.png)
