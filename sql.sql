@@ -408,6 +408,7 @@ INSERT INTO client_order_services (id_order, service_price_id, quantity, unit_pr
 
 
 
+--select_join_queries.md
 --1.1
 SELECT *
 FROM employee;
@@ -483,3 +484,54 @@ SELECT company_name AS "Поставщик",
     location.phone_number AS "Телефон автосервиса"
 FROM supplier
 CROSS JOIN location;
+
+
+
+
+-- aggregate_group_queries.md
+-- 1.1
+SELECT COUNT(*) as number_of_completed_orders
+FROM client_order
+WHERE status = 'выполнен';
+
+--2.2
+SELECT SUM(total_cost) AS total_supplier_orders_cost
+FROM order_to_supplier os
+INNER JOIN location l ON os.id_location = l.id
+WHERE address = 'ул. Ленина, 25, Москва';
+
+--4.1
+SELECT MIN(registration_date) AS earliest_registration
+FROM loyalty_card;
+
+--5.2
+SELECT MAX(points_balance) AS max_points
+FROM loyalty_card;
+
+--7.1
+SELECT 
+    COUNT(*) AS orders_count,
+    SUM(total_amount) AS total_sum,
+    ROUND(AVG(total_amount), 2) AS average_amount,
+    MIN(total_amount) AS min_amount,
+    MAX(total_amount) AS max_amount
+FROM client_order;
+
+--8.2
+SELECT priority, COUNT(*) AS orders_count
+FROM client_order
+GROUP BY priority;
+
+--10.1
+SELECT position, status, COUNT(*) AS employees_count
+FROM employee
+GROUP BY
+	GROUPING SETS ((position, status), (position), (status), ())
+ORDER BY position, status;
+
+--11.2
+SELECT brand_name, model_name, COUNT(*) AS cars_count
+FROM car c
+INNER JOIN car_model cm ON c.model_id = cm.id
+GROUP BY ROLLUP (brand_name, model_name)
+ORDER BY brand_name, model_name;
