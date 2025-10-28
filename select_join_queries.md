@@ -393,3 +393,4 @@ FULL OUTER JOIN LOCATION l ON e.location_id = l.id;
 ```
 
 РЕЗУЛЬТАТ ВЫПОЛЕНЕНИЯ ЗАПРОСА - ![Скриншот](screenshots/18.2.png)
+
