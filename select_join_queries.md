@@ -362,3 +362,4 @@ FULL OUTER JOIN client_order_items
 ```
 
 РЕЗУЛЬТАТ ВЫПОЛЕНЕНИЯ ЗАПРОСА - ![Скриншот](screenshots/18.2.png)
+
