@@ -18,9 +18,10 @@ WHERE status = 'работает';
 
 ### 2. Агрегатная функция SUM()
 
-2.1.
+2.1. Посчитать стоимость товара на точке с id = 1
 ```sql
-
+SELECT sum(quantity) FROM remains_of_goods 
+WHERE location_id = 1;
 ```
 
 ![Скриншот](screenshots1/2.1.png)
@@ -45,9 +46,9 @@ FROM client_order_items;
 
 ![Скриншот](screenshots1/3.1.png)
 
-3.2. 
+3.2. Средняя стоимость услуги
 ```sql
-
+SELECT avg(base_price) FROM service;
 ```
 
 ![Скриншот](screenshots1/3.2.png)
@@ -72,9 +73,9 @@ FROM product_prices;
 
 ### 5. Агрегатная функция MAX() 
 
-5.1. 
+5.1. Максимально возможная скидка по карте
 ```sql
-
+SELECT max(discount_percent) FROM loyalty_rules;
 ```
 
 ![Скриншот](screenshots1/5.1.png)
@@ -96,9 +97,9 @@ FROM nomenclature;
 
 ![Скриншот](screenshots1/6.1.png)
 
-6.2. 
+6.2. Все адреса точек 
 ```sql
-
+SELECT string_agg(address, '  |  ') FROM "location";
 ```
 
 ![Скриншот](screenshots1/6.2.png)
@@ -134,9 +135,10 @@ INNER JOIN product_prices p_p ON n.article = p_p.article;
 
 ### 8. GROUP BY 
 
-8.1. 
+8.1. Количество товаров в заказе
 ```sql
-
+SELECT id_order, count(id) AS count_of_products FROM client_order_items
+GROUP BY id_order;
 ```
 
 ![Скриншот](screenshots1/8.1.png)
@@ -163,9 +165,12 @@ HAVING COUNT(*) > 1;
 
 ![Скриншот](screenshots1/9.1.png)
 
-9.2. 
+9.2. Поставщики, к которым было больше 1 заказа
 ```sql
-
+SELECT s.company_name, count(ots.id) AS count_of_orders FROM supplier s 
+JOIN order_to_supplier ots ON ots.id_supplier = s.id 
+GROUP BY s.company_name 
+HAVING count(ots.id) > 1;
 ```
 
 ![Скриншот](screenshots1/9.2.png)
@@ -205,9 +210,10 @@ ORDER BY l.address, n.name;
 
 ### 11. Расширенная группировка - ROLLUP
 
-11.1. 
+11.1. Количество заказов по статусам и приоритетам и просто по статусам
 ```sql
-
+SELECT status, priority, count(id) FROM client_order
+GROUP BY rollup(status, priority);
 ```
 
 ![Скриншот](screenshots1/11.1.png)
@@ -238,9 +244,10 @@ ORDER BY position, status;
 
 ![Скриншот](screenshots1/12.1.png)
 
-12.2. 
+12.2. Количество заказов по приоритету и статусу, приоритету, статусу и просто общее количество
 ```sql
-
+SELECT status, priority, count(id) FROM client_order
+GROUP BY cube(status, priority);
 ```
 
 ![Скриншот](screenshots1/12.2.png)
