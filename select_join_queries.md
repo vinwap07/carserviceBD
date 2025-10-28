@@ -16,9 +16,10 @@ FROM service;
 
 ### 2. Выборка отдельных столбцов 
 
-2.1.
+2.1. Названия брендов машин клиентов
 ```sql
-
+SELECT brand_name
+FROM car_model;
 ```
 
 РЕЗУЛЬТАТ ВЫПОЛЕНЕНИЯ ЗАПРОСА - ![Скриншот](screenshots/2.1.png)
@@ -42,9 +43,10 @@ FROM employee;
 
 РЕЗУЛЬТАТ ВЫПОЛЕНЕНИЯ ЗАПРОСА  - ![Скриншот](screenshots/3.1.png)
 
-3.2.
+3.2. Информация о должности и месте работы сотрудников
 ```sql
-
+SELECT POSITION AS Должность, location_id AS Точка
+FROM employee;
 ```
 
 РЕЗУЛЬТАТ ВЫПОЛЕНЕНИЯ ЗАПРОСА - ![Скриншот](screenshots/3.2.png)
@@ -72,9 +74,11 @@ FROM shift_schedule;
 
 ### 5. Выборка данных, вычисляемые столбцы, математические функции 
 
-5.1.
+5.1. Нахождение срока использования карты лояльности 
 ```sql
-
+SELECT card_number, registration_date,
+current_date - registration_date AS "Срок использования карты"
+FROM loyalty_card;
 ```
 
 РЕЗУЛЬТАТ ВЫПОЛЕНЕНИЯ ЗАПРОСА - ![Скриншот](screenshots/5.1.png)
@@ -107,9 +111,16 @@ FROM client_order;
 
 РЕЗУЛЬТАТ ВЫПОЛЕНЕНИЯ ЗАПРОСА - ![Скриншот](screenshots/6.1.png)
 
-6.2.
+6.2. ID сотрудника, его статус и даты отпуска в зависимости от статуса
 ```sql
-
+SELECT id,
+       status,
+       CASE 
+           WHEN status = 'отпуск' THEN 'в процессе'
+           WHEN status = 'работает' THEN '12.07-26.07'
+           WHEN status = 'уволен' THEN '-'
+       END AS vacation
+FROM employee;
 ```
 
 РЕЗУЛЬТАТ ВЫПОЛЕНЕНИЯ ЗАПРОСА - ![Скриншот](screenshots/6.2.png)
@@ -137,9 +148,11 @@ WHERE status = 'работает';
 
 ### 8. Выборка данных, логические операции (where, операторы сравнения, not, and, or) 
 
-8.1.
+8.1. Вывод всех сотрудников, устроенных на работу до 2020 года с их ФИО и статусом
 ```sql
-
+SELECT full_name, status, hire_date
+FROM employee 
+WHERE status IN ('работает', 'отпуск') AND hire_date < '2020-01-01';
 ```
 
 РЕЗУЛЬТАТ ВЫПОЛЕНЕНИЯ ЗАПРОСА - ![Скриншот](screenshots/8.1.png)
@@ -165,9 +178,11 @@ WHERE base_price BETWEEN 15000 AND 30000;
 
 РЕЗУЛЬТАТ ВЫПОЛЕНЕНИЯ ЗАПРОСА - ![Скриншот](screenshots/9.1.png)
 
-9.2.
+9.2. Вывод ID, модели и бренда машины клиента при условии что бренд BMW или Ford
 ```sql
-
+SELECT id, model_name, brand_name
+FROM car_model 
+WHERE brand_name IN ('BMW', 'Ford');
 ```
 
 РЕЗУЛЬТАТ ВЫПОЛЕНЕНИЯ ЗАПРОСА - ![Скриншот](screenshots/9.2.png)
@@ -200,9 +215,11 @@ ORDER BY discount_percent DESC;
 
 ### 11. Выборка данных, оператор LIKE (%, _) 
 
-11.1.
+11.1. Вывод адресов и режимов работы всех точек, работающих с 8 утра
 ```sql
-
+SELECT address, working_hours
+FROM "location" 
+WHERE working_hours LIKE '08%';
 ```
 
 РЕЗУЛЬТАТ ВЫПОЛЕНЕНИЯ ЗАПРОСА - ![Скриншот](screenshots/11.1.png)
@@ -226,9 +243,10 @@ FROM car_model;
 
 РЕЗУЛЬТАТ ВЫПОЛЕНЕНИЯ ЗАПРОСА - ![Скриншот](screenshots/12.1.png)
 
-12.2.
+12.2. Вывод всех уникальных названий услуг
 ```sql
-
+SELECT DISTINCT name
+FROM service;
 ```
 
 РЕЗУЛЬТАТ ВЫПОЛЕНЕНИЯ ЗАПРОСА - ![Скриншот](screenshots/12.2.png)
@@ -257,9 +275,12 @@ LIMIT 3;
  
 ### 14. INNER JOIN
 
-14.1.
+14.1. Таблица, содержащая ФИО заказчика, его телефон, ID заказа, его стоимость и количество баллов на карте лояльности
 ```sql
-
+SELECT full_name, phone_number, co.id, co.status, co.total_amount , lc.points_balance
+FROM client 
+INNER JOIN client_order co ON client.id = co.id_client
+INNER JOIN loyalty_card lc ON client.id = lc.id_client 
 ```
 
 РЕЗУЛЬТАТ ВЫПОЛЕНЕНИЯ ЗАПРОСА - ![Скриншот](screenshots/14.1.png)
@@ -291,9 +312,11 @@ FROM "location" LEFT JOIN employee
 
 РЕЗУЛЬТАТ ВЫПОЛЕНЕНИЯ ЗАПРОСА - ![Скриншот](screenshots/15.1.png)
 
-15.2.
+15.2. Адреса точек, их телефоны, товары на точке, их артикулы
 ```sql
-
+SELECT LOCATION.id, address, phone_number, rog.article, rog.quantity
+FROM location
+LEFT JOIN remains_of_goods rog ON location.id = rog.location_id;
 ```
 
 РЕЗУЛЬТАТ ВЫПОЛЕНЕНИЯ ЗАПРОСА - ![Скриншот](screenshots/15.2.png)
@@ -324,9 +347,11 @@ SELECT l.address,
 
 ### 17. CROSS JOIN
 
-17.1. 
+17.1. Должности сотрудников, их ФИО и адреса точек, где они работают
 ```sql
-
+SELECT e.POSITION, e.full_name, l.address 
+FROM employee e
+CROSS JOIN LOCATION l; 
 ```
 
 РЕЗУЛЬТАТ ВЫПОЛЕНЕНИЯ ЗАПРОСА - ![Скриншот](screenshots/17.1.png)
@@ -356,9 +381,15 @@ FULL OUTER JOIN client_order_items
 
 РЕЗУЛЬТАТ ВЫПОЛЕНЕНИЯ ЗАПРОСА - ![Скриншот](screenshots/18.1.png)
 
-18.2. 
+18.2. ФИО сотрудников и их должности, а также часы работы и адрес точки
 ```sql
-
+SELECT 
+    e.full_name,
+    e.position,
+    l.address,
+    l.working_hours
+FROM employee e
+FULL OUTER JOIN LOCATION l ON e.location_id = l.id;
 ```
 
 РЕЗУЛЬТАТ ВЫПОЛЕНЕНИЯ ЗАПРОСА - ![Скриншот](screenshots/18.2.png)
