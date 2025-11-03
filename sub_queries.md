@@ -6,9 +6,9 @@ SELECT (SELECT MIN(created_date) FROM client_order) AS first_order_date;
 ```
 ![Скриншот](screenshots2/1.1.png)
 
-1.2. 
+1.2. Один из клиентов
 ```sql
-
+SELECT (SELECT full_name FROM client LIMIT 1) AS one_client;
 ```
 ![Скриншот](screenshots2/1.2.png)
 
@@ -34,9 +34,17 @@ WHERE order_count > 0;
 
 ![Скриншот](screenshots2/2.1.png)
 
-2.2. 
+2.2. Сотрудники с количеством смен за январь 2024
 ```sql
-
+SELECT e.full_name, shift_count
+FROM (
+    SELECT ess.employee_id, COUNT(*) as shift_count
+    FROM employee_shift_schedule ess
+    JOIN shift_schedule ss ON ess.shift_schedule_id = ss.id
+    WHERE EXTRACT(YEAR FROM ss.shift_date) = 2024 AND EXTRACT(MONTH FROM ss.shift_date) = 1
+    GROUP BY ess.employee_id
+) AS employee_shifts
+JOIN employee e ON employee_shifts.employee_id = e.id;
 ```
 
 ![Скриншот](screenshots2/2.2.png)
@@ -62,9 +70,11 @@ WHERE total_amount > (
 
 ![Скриншот](screenshots2/3.1.png)
 
-3.2. 
+3.2. Самый долго работающий сотрудник
 ```sql
-
+SELECT * FROM employee 
+WHERE hire_date = (SELECT MIN(hire_date) FROM employee);
+);
 ```
 
 ![Скриншот](screenshots2/3.2.png)
@@ -89,9 +99,14 @@ HAVING SUM(coi.quantity) > (SELECT AVG(quantity) FROM client_order_items);
 
 ![Скриншот](screenshots2/4.1.png)
 
-4.2. 
+4.2. Поставщики, у которых средняя стоимость товара выше общей средней
 ```sql
-
+SELECT s.company_name, AVG(pp.price) as avg_price
+FROM supplier s
+JOIN nomenclature n ON s.id = n.id_supplier
+JOIN product_prices pp ON n.article = pp.article
+GROUP BY s.id, s.company_name
+HAVING AVG(pp.price) > (SELECT AVG(price) FROM product_prices);
 ```
 
 ![Скриншот](screenshots2/4.2.png)
@@ -117,9 +132,17 @@ WHERE article <> ALL (
 
 ![Скриншот](screenshots2/5.1.png)
 
-5.2. 
+5.2. Услуги, которые никогда не заказывались в срочных заказах
 ```sql
-
+SELECT name
+FROM service
+WHERE name <> ALL (
+    SELECT DISTINCT sp.service_name
+    FROM client_order_services cos
+    JOIN service_prices sp ON cos.service_price_id = sp.id
+    JOIN client_order co ON cos.id_order = co.id
+    WHERE co.priority = 'срочный'
+);
 ```
 
 ![Скриншот](screenshots2/5.2.png)
@@ -150,9 +173,19 @@ WHERE article IN (
 
 ![Скриншот](screenshots2/6.1.png)
 
-6.2.  
+6.2. Клиенты, чьи автомобили обслуживались в московском филиале
 ```sql
-
+SELECT full_name
+FROM client
+WHERE id IN (
+    SELECT DISTINCT id_client
+    FROM client_order
+    WHERE id_location IN (
+        SELECT id 
+        FROM location 
+        WHERE address LIKE '%Москва%'
+    )
+);
 ```
 
 ![Скриншот](screenshots2/6.2.png)
@@ -178,9 +211,18 @@ WHERE name = ANY (
 
 ![Скриншот](screenshots2/7.1.png)
 
-7.2. 
+7.2. Товары, цена которых выше любой цены на услуги
 ```sql
-
+SELECT article, name
+FROM nomenclature
+WHERE article = ANY (
+    SELECT article
+    FROM product_prices
+    WHERE price > ANY (
+        SELECT price
+        FROM service_prices
+    )
+);
 ```
 
 ![Скриншот](screenshots2/7.2.png)
@@ -207,9 +249,15 @@ WHERE EXISTS (
 
 ![Скриншот](screenshots2/8.1.png)
 
-8.2.
+8.2. Филиалы, в которых есть сотрудники в отпуске
 ```sql
-
+SELECT *
+FROM location l
+WHERE EXISTS (
+    SELECT 1
+    FROM employee e
+    WHERE e.location_id = l.id AND e.status = 'отпуск'
+);
 ```
 
 ![Скриншот](screenshots2/8.2.png)
@@ -237,9 +285,17 @@ WHERE (registration_date, points_balance) IN (
 
 ![Скриншот](screenshots2/9.1.png)
 
-9.2. 
+9.2. Товары с максимальной ценой в каждой категории 
 ```sql
-
+SELECT n.article, n.name, pp.price
+FROM nomenclature n
+JOIN product_prices pp ON n.article = pp.article
+WHERE (n.id_supplier, pp.price) IN (
+    SELECT n2.id_supplier, MAX(pp2.price)
+    FROM nomenclature n2
+    JOIN product_prices pp2 ON n2.article = pp2.article
+    GROUP BY n2.id_supplier
+);
 ```
 
 ![Скриншот](screenshots2/9.2.png)
@@ -265,9 +321,14 @@ FROM location l;
 
 ![Скриншот](screenshots2/10.1.png)
 
-10.2. 
+10.2. Суммарная стоимость заказов для каждого клиента
 ```sql
-
+SELECT 
+    c.full_name,
+    (SELECT SUM(total_amount) 
+     FROM client_order co 
+     WHERE co.id_client = c.id) as total_orders_amount
+FROM client c;
 ```
 
 ![Скриншот](screenshots2/10.2.png)
@@ -295,9 +356,15 @@ FROM nomenclature n;
 
 ![Скриншот](screenshots2/10.4.png)
 
-10.5. 
+10.5. Количество различных услуг в каждом заказе
 ```sql
-
+SELECT 
+    co.id as order_id,
+    (SELECT COUNT(DISTINCT sp.service_name) 
+     FROM client_order_services cos 
+     JOIN service_prices sp ON cos.service_price_id = sp.id
+     WHERE cos.id_order = co.id) as unique_services_count
+FROM client_order co;
 ```
 
 ![Скриншот](screenshots2/10.5.png)
