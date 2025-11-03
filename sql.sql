@@ -535,3 +535,111 @@ FROM car c
 INNER JOIN car_model cm ON c.model_id = cm.id
 GROUP BY ROLLUP (brand_name, model_name)
 ORDER BY brand_name, model_name;
+
+
+
+
+-- sub_queries.md
+--1.1
+SELECT (SELECT MIN(created_date) FROM client_order) AS first_order_date;
+
+--2.1
+SELECT full_name, order_count
+FROM (
+    SELECT c.full_name, COUNT(co.id) AS order_count
+    FROM client c
+    LEFT JOIN client_order co ON c.id = co.id_client
+    GROUP BY c.full_name
+) 
+WHERE order_count > 0;
+
+--3.1
+SELECT *
+FROM client_order
+WHERE total_amount > (
+    SELECT AVG(total_amount) 
+    FROM client_order 
+    WHERE status = 'выполнен'
+);
+
+--4.1
+SELECT n.article, n.name as product_name, SUM(coi.quantity) as total_sold
+FROM client_order_items coi
+INNER JOIN product_prices pp ON coi.product_price_id = pp.id
+INNER JOIN nomenclature n ON pp.article = n.article 
+GROUP BY n.article
+HAVING SUM(coi.quantity) > (SELECT AVG(quantity) FROM client_order_items);
+
+--5.1
+SELECT DISTINCT name 
+FROM nomenclature
+WHERE article <> ALL (
+    SELECT DISTINCT article 
+    FROM client_order_items coi 
+    INNER JOIN product_prices pp ON coi.product_price_id = pp.id
+);
+
+--6.1
+SELECT *
+FROM nomenclature
+WHERE article IN (
+    SELECT article 
+    FROM remains_of_goods 
+    WHERE quantity > 10
+    AND location_id IN (
+        SELECT id 
+        FROM location 
+        WHERE address LIKE '%Москва%'
+    )
+);
+
+--7.1
+SELECT name, base_price
+FROM service
+WHERE name = ANY (
+    SELECT service_name 
+    FROM client_order_services cos 
+    INNER JOIN service_prices sp ON cos.service_price_id = sp.id
+);
+
+--8.1
+SELECT *
+FROM client c
+WHERE EXISTS (
+    SELECT 1 
+    FROM loyalty_card lc 
+    WHERE lc.id_client = c.id 
+    AND lc.points_balance > 1000
+);
+
+--9.1
+SELECT full_name, registration_date, points_balance
+FROM client 
+INNER JOIN loyalty_card ON client.id = loyalty_card.id_client
+WHERE (registration_date, points_balance) IN (
+    SELECT registration_date, points_balance
+    FROM loyalty_card lc
+    INNER JOIN loyalty_rules lr ON lc.points_balance >= lr.min_points
+    WHERE level_name = 'Золото'
+);
+
+--10.1
+SELECT 
+    address,
+    (SELECT COUNT(*) 
+     FROM employee e 
+     WHERE e.location_id = l.id AND e.status = 'работает') 
+	 AS active_employees
+FROM location l;
+
+--10.4
+SELECT 
+    n.article,
+    n.name,
+    (SELECT price 
+     FROM product_prices pp 
+     WHERE pp.article = n.article 
+     ORDER BY effective_date DESC 
+     LIMIT 1) 
+	 AS current_price
+FROM nomenclature n;
