@@ -12,9 +12,9 @@ SELECT (SELECT full_name FROM client LIMIT 1) AS one_client;
 ```
 ![Скриншот](screenshots2/1.2.png)
 
-1.3.
+1.3. Год выпуска самой старой обслуживаемой машины
 ```sql
-
+SELECT (SELECT min(year) FROM car) AS the_year_of_oldest_car;
 ```
 ![Скриншот](screenshots2/1.3.png)
 
@@ -49,9 +49,13 @@ JOIN employee e ON employee_shifts.employee_id = e.id;
 
 ![Скриншот](screenshots2/2.2.png)
 
-2.3.
+2.3. Точки, у которых средний чек больше 500к
 ```sql
-
+SELECT id_location, avg_amount FROM
+	(SELECT id_location, avg(total_amount) AS avg_amount
+	FROM client_order co 
+	GROUP BY id_location) AS sub
+WHERE sub.avg_amount > 500000;
 ```
 ![Скриншот](screenshots2/2.3.png)
 
@@ -74,14 +78,15 @@ WHERE total_amount > (
 ```sql
 SELECT * FROM employee 
 WHERE hire_date = (SELECT MIN(hire_date) FROM employee);
-);
 ```
 
 ![Скриншот](screenshots2/3.2.png)
 
-3.3.
+3.3. Карты клиентов, баллы которой соответствуют скидке 0%
 ```sql
-
+SELECT * FROM loyalty_card lc 
+WHERE lc.points_balance < (SELECT lr.min_points FROM loyalty_rules lr
+							ORDER BY lr.min_points ASC LIMIT 1 OFFSET 1);
 ```
 ![Скриншот](screenshots2/3.3.png)
 
@@ -111,9 +116,11 @@ HAVING AVG(pp.price) > (SELECT AVG(price) FROM product_prices);
 
 ![Скриншот](screenshots2/4.2.png)
 
-4.3.
+4.3. Точки, на которых сумма чека выше среднего
 ```sql
-
+SELECT id_location FROM client_order co 
+GROUP BY co.id_location 
+HAVING avg(co.total_amount) > (SELECT avg(total_amount) FROM client_order);
 ```
 ![Скриншот](screenshots2/4.3.png)
 
@@ -147,9 +154,10 @@ WHERE name <> ALL (
 
 ![Скриншот](screenshots2/5.2.png)
 
-5.3.
+5.3. Точки, на которых не было заказов
 ```sql
-
+SELECT * FROM "location" 
+WHERE id <> ALL (SELECT id_location FROM client_order);
 ```
 ![Скриншот](screenshots2/5.3.png)
 
@@ -190,9 +198,10 @@ WHERE id IN (
 
 ![Скриншот](screenshots2/6.2.png)
 
-6.3.
+6.3. Поставщики, к которым делались заказы
 ```sql
-
+SELECT * FROM supplier s 
+WHERE s.id IN (SELECT ots.id_supplier FROM order_to_supplier ots);
 ```
 ![Скриншот](screenshots2/6.3.png)
 
@@ -227,9 +236,12 @@ WHERE article = ANY (
 
 ![Скриншот](screenshots2/7.2.png)
 
-7.3.
+7.3. Сотрудники, отработавшие хотя бы 2 смены
 ```sql
-
+SELECT * FROM employee e 
+WHERE e.id = ANY (SELECT ess.employee_id FROM employee_shift_schedule ess
+	GROUP BY ess.employee_id 
+	HAVING count(ess.id) >= 2);
 ```
 ![Скриншот](screenshots2/7.3.png)
 
@@ -262,9 +274,11 @@ WHERE EXISTS (
 
 ![Скриншот](screenshots2/8.2.png)
 
-8.3.
+8.3. Поставщики, к которым есть заказы, находящиеся в процессе
 ```sql
-
+SELECT * FROM supplier s 
+WHERE EXISTS (SELECT 1 FROM order_to_supplier ots 
+	WHERE ots.status IN ('формируется', 'отправлен'));
 ```
 ![Скриншот](screenshots2/8.3.png)
 
@@ -300,9 +314,12 @@ WHERE (n.id_supplier, pp.price) IN (
 
 ![Скриншот](screenshots2/9.2.png)
 
-9.3.
+9.3. Услуги, имеющие такую же стоимость, что и товары, в одном заказе
 ```sql
-
+SELECT * FROM client_order_services t 
+WHERE (t.id_order, t.total_price) IN 
+	(SELECT coi.id_order, coi.total_price 
+	FROM client_order_items coi);
 ```
 ![Скриншот](screenshots2/9.3.png)
 
@@ -333,9 +350,11 @@ FROM client c;
 
 ![Скриншот](screenshots2/10.2.png)
 
-10.3. 
+10.3. Количество заказов на каждой локации
 ```sql
-
+SELECT l.address, (SELECT count(*) FROM client_order co 
+	WHERE co.id_location = l.id) AS orders_count 
+FROM "location" l;
 ```
 
 ![Скриншот](screenshots2/10.3.png)
