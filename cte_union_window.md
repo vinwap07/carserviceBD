@@ -261,7 +261,7 @@ FROM client_order;
 ```
 ![Скриншот](screenshots3/10.3.png)
 
-#### 10.3 LAST_VALUE Последний заказ клиента
+#### 10.4 LAST_VALUE Последний заказ клиента
 ```sql 
 SELECT DISTINCT
     id_client,
@@ -272,4 +272,4 @@ SELECT DISTINCT
     ) as last_order_amount
 FROM client_order;
 ```
-![Скриншот](screenshots3/10.3.png)
+![Скриншот](screenshots3/10.4.png)
