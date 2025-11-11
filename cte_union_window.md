@@ -3,7 +3,7 @@
 ```sql 
 
 ```
-![Скриншот](screenshots3.1.1.png)
+![Скриншот](screenshots3/1.1.png)
 
 1.2 CTE для анализа заказов по брендам автомобилей
 ```sql 
@@ -24,19 +24,19 @@ SELECT
 FROM BrandOrders
 ORDER BY order_count DESC;
 ```
-![Скриншот](screenshots3.1.2.png)
+![Скриншот](screenshots3/1.2.png)
 
 1.3 
 ```sql 
 
 ```
-![Скриншот](screenshots3.1.3.png)
+![Скриншот](screenshots3/1.3.png)
 
 1.4 
 ```sql 
 
 ```
-![Скриншот](screenshots3.1.4.png)
+![Скриншот](screenshots3/1.4.png)
 
 1.5 CTE для анализа поставщиков и их товаров
 ```sql 
@@ -60,7 +60,7 @@ SELECT
 FROM SupplierAnalysis
 ORDER BY product_count DESC;
 ```
-![Скриншот](screenshots3.1.5.png)
+![Скриншот](screenshots3/1.5.png)
 
 ### 2. UNION 
 
@@ -68,13 +68,13 @@ ORDER BY product_count DESC;
 ```sql 
 
 ```
-![Скриншот](screenshots3.2.1.png)
+![Скриншот](screenshots3/2.1.png)
 
 2.2 
 ```sql 
 
 ```
-![Скриншот](screenshots3.2.2.png)
+![Скриншот](screenshots3/2.2.png)
 
 2.3 Объединение клиентов и сотрудников
 ```sql 
@@ -84,7 +84,7 @@ UNION
 SELECT full_name, phone_number, 'employee' as type  
 FROM employee;
 ```
-![Скриншот](screenshots3.2.3.png)
+![Скриншот](screenshots3/2.3.png)
 
 ### 3. INTERSECT 
 
@@ -92,13 +92,13 @@ FROM employee;
 ```sql 
 
 ```
-![Скриншот](screenshots3.3.1.png)
+![Скриншот](screenshots3/3.1.png)
 
 3.2 
 ```sql 
 
 ```
-![Скриншот](screenshots3.3.2.png)
+![Скриншот](screenshots3/3.2.png)
 
 3.3 Товары, которые есть и в заказах клиентов и в заказах поставщикам
 ```sql 
@@ -114,7 +114,7 @@ FROM supplier_order_items soi
 JOIN order_to_supplier os ON soi.id_order = os.id
 WHERE os.status = 'доставлен';
 ```
-![Скриншот](screenshots3.3.3.png)
+![Скриншот](screenshots3/3.3.png)
 
 ### 4. EXCEPT 
 
@@ -122,13 +122,13 @@ WHERE os.status = 'доставлен';
 ```sql 
 
 ```
-![Скриншот](screenshots3.4.1.png)
+![Скриншот](screenshots3/4.1.png)
 
 4.2 
 ```sql 
 
 ```
-![Скриншот](screenshots3.4.2.png)
+![Скриншот](screenshots3/4.2.png)
 
 4.3 Товары без остатков на складе
 ```sql 
@@ -136,7 +136,7 @@ SELECT article FROM nomenclature
 EXCEPT
 SELECT article FROM remains_of_goods;
 ```
-![Скриншот](screenshots3.4.3.png)
+![Скриншот](screenshots3/4.3.png)
 
 ### 5. PARTITION BY 
 
@@ -144,13 +144,13 @@ SELECT article FROM remains_of_goods;
 ```sql 
 
 ```
-![Скриншот](screenshots3.5.1.png)
+![Скриншот](screenshots3/5.1.png)
 
 5.2 
 ```sql 
 
 ```
-![Скриншот](screenshots3.5.2.png)
+![Скриншот](screenshots3/5.2.png)
 
 ### 6. PARTITION BY + ORDER BY 
 
@@ -166,13 +166,13 @@ SELECT
     ) as cumulative_sum
 FROM client_order;
 ```
-![Скриншот](screenshots3.6.1.png)
+![Скриншот](screenshots3/6.1.png)
 
 6.2 
 ```sql 
 
 ```
-![Скриншот](screenshots3.6.2.png)
+![Скриншот](screenshots3/6.2.png)
 
 ### 7. ROWS 
 
@@ -180,7 +180,7 @@ FROM client_order;
 ```sql 
 
 ```
-![Скриншот](screenshots3.7.1.png)
+![Скриншот](screenshots3/7.1.png)
 
 7.2 Скользящее среднее за 2 последних заказа
 ```sql 
@@ -193,7 +193,7 @@ SELECT
     ) as moving_avg
 FROM client_order;
 ```
-![Скриншот](screenshots3.7.2.png)
+![Скриншот](screenshots3/7.2.png)
 
 ### 8. RANGE
 
@@ -201,13 +201,13 @@ FROM client_order;
 ```sql 
 
 ```
-![Скриншот](screenshots3.8.1.png)
+![Скриншот](screenshots3/8.1.png)
 
 8.2 
 ```sql 
 
 ```
-![Скриншот](screenshots3.8.2.png)
+![Скриншот](screenshots3/8.2.png)
 
 ### 9. Ранжирующие оконные функции
 
@@ -223,19 +223,19 @@ SELECT
     ) as order_num
 FROM client_order;
 ```
-![Скриншот](screenshots3.9.1.png)
+![Скриншот](screenshots3/9.1.png)
 
 #### 9.2 RANK 
 ```sql 
 
 ```
-![Скриншот](screenshots3.9.2.png)
+![Скриншот](screenshots3/9.2.png)
 
 #### 9.3 DENSE_RANK 
 ```sql 
 
 ```
-![Скриншот](screenshots3.9.3.png)
+![Скриншот](screenshots3/9.3.png)
 
 ### 10. Функции смещения
 
@@ -247,19 +247,19 @@ SELECT
     LAG(total_amount) OVER (ORDER BY created_date) as prev_amount
 FROM client_order;
 ```
-![Скриншот](screenshots3.10.1.png)
+![Скриншот](screenshots3/10.1.png)
 
 #### 10.2 LEAD 
 ```sql 
 
 ```
-![Скриншот](screenshots3.10.2.png)
+![Скриншот](screenshots3/10.2.png)
 
 #### 10.3 FIRST_VALUE 
 ```sql 
 
 ```
-![Скриншот](screenshots3.10.3.png)
+![Скриншот](screenshots3/10.3.png)
 
 #### 10.3 LAST_VALUE Последний заказ клиента
 ```sql 
@@ -272,4 +272,4 @@ SELECT DISTINCT
     ) as last_order_amount
 FROM client_order;
 ```
-![Скриншот](screenshots3.10.3.png)
+![Скриншот](screenshots3/10.3.png)
