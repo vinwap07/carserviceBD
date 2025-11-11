@@ -643,3 +643,11 @@ SELECT
      LIMIT 1) 
 	 AS current_price
 FROM nomenclature n;
+
+INSERT INTO client (full_name, phone_number, email, driver_license) VALUES 
+('Белова Анастасия Петровна', '+79164445566', 'belovaanastasiya@gmail.com', '71СС453423'), 
+('Соколов Роман Дмитриевич', '+79168889900', 'sokolov95@yandex.ru', '77KK345118');
+
+UPDATE public.loyalty_card
+SET id_client=3, registration_date='2023-03-10', last_visit_date='2024-01-08', points_balance=800
+WHERE card_number=1003;
