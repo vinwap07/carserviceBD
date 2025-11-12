@@ -648,29 +648,29 @@ FROM nomenclature n;
 
 
 -- Очистка данных в правильном порядке (с учетом внешних ключей)
-TRUNCATE TABLE 
-    client_order_services,
-    client_order_items,
-    supplier_order_items,
-    client_order,
-    order_to_supplier,
-    employee_shift_schedule,
-    shift_schedule,
-    loyalty_card,
-    remains_of_goods,
-    product_prices,
-    service_prices,
-    car_client,
-    employee,
-    location,
-    car,
-    client,
-    nomenclature,
-    supplier,
-    car_model,
-    loyalty_rules,
-    service
-RESTART IDENTITY CASCADE;
+-- TRUNCATE TABLE 
+--     client_order_services,
+--     client_order_items,
+--     supplier_order_items,
+--     client_order,
+--     order_to_supplier,
+--     employee_shift_schedule,
+--     shift_schedule,
+--     loyalty_card,
+--     remains_of_goods,
+--     product_prices,
+--     service_prices,
+--     car_client,
+--     employee,
+--     location,
+--     car,
+--     client,
+--     nomenclature,
+--     supplier,
+--     car_model,
+--     loyalty_rules,
+--     service
+-- RESTART IDENTITY CASCADE;
 
 -- Добавление данных в таблицы
 INSERT INTO client (full_name, phone_number, email, driver_license) VALUES 
