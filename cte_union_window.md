@@ -35,9 +35,18 @@ ORDER BY order_count DESC;
 ```
 ![Скриншот](screenshots3/1.2.png)
 
-1.3 
+1.3 Товары, которые есть в наличии в московском филиале в количестве более 10 штук
 ```sql 
-
+WITH MoscowItems AS (
+    SELECT article, quantity
+    FROM remains_of_goods rog
+    INNER JOIN location l ON rog.location_id = l.id
+    WHERE l.address LIKE '%Москва%'
+)
+SELECT n.*, mi.quantity
+FROM nomenclature n
+INNER JOIN MoscowItems mi ON n.article = mi.article
+WHERE mi.quantity > 10;
 ```
 ![Скриншот](screenshots3/1.3.png)
 
@@ -79,9 +88,22 @@ ORDER BY product_count DESC;
 
 ### 2. UNION 
 
-2.1 
+2.1 Все заказы (клиентские и поставщикам)
 ```sql 
-
+SELECT 
+    id as order_number,
+    created_date as creation_date,
+    total_amount as amount,
+    'client' as order_type
+FROM client_order
+UNION
+SELECT 
+    id as order_number,
+    created_date as creation_date,
+    total_cost as amount,
+    'supplier' as order_type
+FROM order_to_supplier
+ORDER BY creation_date DESC;
 ```
 ![Скриншот](screenshots3/2.1.png)
 
@@ -106,9 +128,24 @@ FROM employee;
 
 ### 3. INTERSECT 
 
-3.1 
+3.1  Клиентов, у которых были и выполненные, и активные, и отмененные заказы
 ```sql 
-
+SELECT 
+    c.full_name
+FROM client c
+WHERE c.id IN (
+    SELECT id_client
+    FROM client_order 
+    WHERE status = 'выполнен'
+    INTERSECT
+    SELECT id_client
+    FROM client_order 
+    WHERE status = 'в работе'
+    INTERSECT
+    SELECT id_client
+    FROM client_order 
+    WHERE status = 'отменен'
+);
 ```
 ![Скриншот](screenshots3/3.1.png)
 
@@ -138,9 +175,16 @@ WHERE os.status = 'доставлен';
 
 ### 4. EXCEPT 
 
-4.1 
+4.1 Клиенты без лояльной карты
 ```sql 
-
+SELECT 
+    full_name
+FROM client
+WHERE id IN (
+    SELECT id FROM client
+    EXCEPT
+    SELECT id_client FROM loyalty_card
+);
 ```
 ![Скриншот](screenshots3/4.1.png)
 
@@ -162,9 +206,16 @@ SELECT article FROM remains_of_goods;
 
 ### 5. PARTITION BY 
 
-5.1 
+5.1 Количество заказов на каждого сотрудника
 ```sql 
-
+SELECT 
+    co.id AS order_id,
+    e.full_name AS employee_name,
+    co.total_amount,
+    COUNT(*) OVER (PARTITION BY co.employee_id) AS total_orders_by_employee
+FROM client_order co
+JOIN employee e ON co.employee_id = e.id
+ORDER BY e.full_name, co.created_date;
 ```
 ![Скриншот](screenshots3/5.1.png)
 
@@ -192,9 +243,18 @@ FROM client_order;
 ```
 ![Скриншот](screenshots3/6.1.png)
 
-6.2 
+6.2 Накопительное количество заказов по каждому сотруднику во времени
 ```sql 
-
+SELECT 
+    e.full_name AS employee_name,
+    co.id AS order_id,
+    co.created_date,
+    COUNT(*) OVER (
+        PARTITION BY co.employee_id 
+        ORDER BY co.created_date
+    ) AS cumulative_orders
+FROM client_order co
+JOIN employee e ON co.employee_id = e.id;
 ```
 ![Скриншот](screenshots3/6.2.png)
 
@@ -224,9 +284,18 @@ FROM client_order;
 
 ### 8. RANGE
 
-8.1 
+8.1 Средняя сумма заказов клиентов, близких по стоимости (±100 000)
 ```sql 
-
+SELECT 
+    id AS order_id,
+    total_amount,
+    ROUND(
+        AVG(total_amount) OVER (
+            ORDER BY total_amount
+            RANGE BETWEEN 100000 PRECEDING AND 100000 FOLLOWING
+        )
+    ) AS avg_amount_in_range
+FROM client_order;
 ```
 ![Скриншот](screenshots3/8.1.png)
 
@@ -256,9 +325,26 @@ FROM client_order;
 ```
 ![Скриншот](screenshots3/9.1.png)
 
-#### 9.2 RANK 
+#### 9.2 RANK Ранжирование сотрудников по общей сумме выполненных заказов
 ```sql 
-
+WITH EmployeeRevenue AS (
+    SELECT 
+        e.id,
+        e.full_name,
+        e.position,
+        COALESCE(SUM(co.total_amount), 0) AS total_revenue
+    FROM employee e
+    LEFT JOIN client_order co 
+        ON e.id = co.employee_id 
+        AND co.status = 'выполнен'
+    GROUP BY e.id, e.full_name, e.position
+)
+SELECT 
+    full_name,
+    position,
+    total_revenue,
+    RANK() OVER (ORDER BY total_revenue DESC) AS revenue_rank
+FROM EmployeeRevenue;
 ```
 ![Скриншот](screenshots3/9.2.png)
 
@@ -282,9 +368,25 @@ FROM client_order;
 ```
 ![Скриншот](screenshots3/10.1.png)
 
-#### 10.2 LEAD 
+#### 10.2 LEAD Следующий визит клиента и интервал между заказами
 ```sql 
-
+SELECT 
+    c.full_name AS client_name,
+    co.id AS order_id,
+    co.created_date AS current_visit,
+    LEAD(co.created_date) OVER (
+        PARTITION BY co.id_client 
+        ORDER BY co.created_date
+    ) AS next_visit,
+    (
+        LEAD(co.created_date) OVER (
+            PARTITION BY co.id_client 
+            ORDER BY co.created_date
+        ) - co.created_date
+    ) AS days_until_next
+FROM client_order co
+JOIN client c ON co.id_client = c.id
+WHERE co.status = 'выполнен';
 ```
 ![Скриншот](screenshots3/10.2.png)
 
