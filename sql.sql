@@ -644,6 +644,35 @@ SELECT
 	 AS current_price
 FROM nomenclature n;
 
+
+
+
+-- Очистка данных в правильном порядке (с учетом внешних ключей)
+TRUNCATE TABLE 
+    client_order_services,
+    client_order_items,
+    supplier_order_items,
+    client_order,
+    order_to_supplier,
+    employee_shift_schedule,
+    shift_schedule,
+    loyalty_card,
+    remains_of_goods,
+    product_prices,
+    service_prices,
+    car_client,
+    employee,
+    location,
+    car,
+    client,
+    nomenclature,
+    supplier,
+    car_model,
+    loyalty_rules,
+    service
+RESTART IDENTITY CASCADE;
+
+-- Добавление данных в таблицы
 INSERT INTO client (full_name, phone_number, email, driver_license) VALUES 
 ('Белова Анастасия Петровна', '+79164445566', 'belovaanastasiya@gmail.com', '71СС453423'), 
 ('Соколов Роман Дмитриевич', '+79168889900', 'sokolov95@yandex.ru', '77KK345118');
@@ -651,3 +680,181 @@ INSERT INTO client (full_name, phone_number, email, driver_license) VALUES
 UPDATE public.loyalty_card
 SET id_client=3, registration_date='2023-03-10', last_visit_date='2024-01-08', points_balance=800
 WHERE card_number=1003;
+
+-- Добавляем заказы с разными статусами для одних и тех же клиентов
+INSERT INTO client_order (id_client, id_car, id_location, employee_id, total_amount, status, created_date, completion_date, priority) VALUES
+(1, 1, 1, 1, 300000, 'выполнен', '2024-01-05 10:00:00', '2024-01-05 16:00:00', 'обычный'),
+(1, 1, 1, 1, 150000, 'в работе', '2024-01-15 09:30:00', NULL, 'обычный'),
+(1, 1, 1, 1, 200000, 'отменен', '2024-01-10 14:20:00', NULL, 'обычный');
+
+INSERT INTO client_order (id_client, id_car, id_location, employee_id, total_amount, status, created_date, completion_date, priority) VALUES
+(2, 2, 1, 1, 250000, 'выполнен', '2024-01-06 11:00:00', '2024-01-06 17:00:00', 'высокий'),
+(2, 2, 1, 1, 180000, 'в работе', '2024-01-16 10:15:00', NULL, 'обычный'),
+(2, 2, 1, 1, 120000, 'отменен', '2024-01-12 15:45:00', NULL, 'низкий');
+INSERT INTO client_order (id_client, id_car, id_location, employee_id, total_amount, status, created_date, completion_date, priority) VALUES
+(3, 3, 2, 4, 400000, 'выполнен', '2024-01-07 12:30:00', '2024-01-07 18:00:00', 'обычный'),
+(3, 3, 2, 4, 220000, 'в работе', '2024-01-17 11:20:00', NULL, 'обычный');
+
+INSERT INTO client_order (id_client, id_car, id_location, employee_id, total_amount, status, created_date, completion_date, priority) VALUES
+(4, 4, 1, 1, 150000, 'выполнен', '2024-01-08 13:15:00', '2024-01-08 15:30:00', 'низкий');
+
+INSERT INTO client_order (id_client, id_car, id_location, employee_id, total_amount, status, created_date, completion_date, priority) VALUES
+(5, 5, 2, 4, 350000, 'выполнен', '2024-01-09 08:45:00', '2024-01-09 14:20:00', 'срочный'),
+(5, 5, 2, 4, 280000, 'в работе', '2024-01-18 13:10:00', NULL, 'обычный'),
+(5, 5, 2, 4, 190000, 'отменен', '2024-01-14 16:30:00', NULL, 'высокий');
+
+-- Добавляем второй заказ для Иванова (id_client = 1, id_car = 1)
+INSERT INTO client_order (
+    id_client, id_car, id_location, employee_id, 
+    total_amount, status, created_date, completion_date, 
+    notes, priority
+) VALUES
+(1, 1, 1, 1, 320000, 'выполнен', '2024-02-15 10:00:00', '2024-02-15 13:00:00', 'Замена масла и фильтра', 'обычный'),
+(1, 1, 1, 1, 180000, 'выполнен', '2024-03-10 09:15:00', '2024-03-10 11:00:00', 'Диагностика + лампы', 'низкий');
+
+-- Добавляем второй заказ для Сидорова (id_client = 5, id_car = 5)
+INSERT INTO client_order (
+    id_client, id_car, id_location, employee_id, 
+    total_amount, status, created_date, completion_date, 
+    notes, priority
+) VALUES
+(5, 5, 2, 4, 450000, 'выполнен', '2024-02-20 14:00:00', '2024-02-20 16:30:00', 'Замена тормозных колодок', 'обычный');
+
+
+
+
+--cte_union_window.md
+--1.3 Товары, которые есть в наличии в московском филиале в количестве более 10 штук
+WITH MoscowItems AS (
+    SELECT article, quantity
+    FROM remains_of_goods rog
+    INNER JOIN location l ON rog.location_id = l.id
+    WHERE l.address LIKE '%Москва%'
+)
+SELECT n.*, mi.quantity
+FROM nomenclature n
+INNER JOIN MoscowItems mi ON n.article = mi.article
+WHERE mi.quantity > 10;
+
+--2.1 Все заказы (клиентские и поставщикам)
+SELECT 
+    id as order_number,
+    created_date as creation_date,
+    total_amount as amount,
+    'client' as order_type
+FROM client_order
+UNION
+SELECT 
+    id as order_number,
+    created_date as creation_date,
+    total_cost as amount,
+    'supplier' as order_type
+FROM order_to_supplier
+ORDER BY creation_date DESC;
+
+--3.1 Клиентов, у которых были и выполненные, и активные, и отмененные заказы
+SELECT 
+    c.full_name
+FROM client c
+WHERE c.id IN (
+    SELECT id_client
+    FROM client_order 
+    WHERE status = 'выполнен'
+    INTERSECT
+    SELECT id_client
+    FROM client_order 
+    WHERE status = 'в работе'
+    INTERSECT
+    SELECT id_client
+    FROM client_order 
+    WHERE status = 'отменен'
+);
+
+--4.1 Клиенты без лояльной карты
+SELECT 
+    full_name
+FROM client
+WHERE id IN (
+    SELECT id FROM client
+    EXCEPT
+    SELECT id_client FROM loyalty_card
+);
+
+--5.1 Количество заказов на каждого сотрудника
+SELECT 
+    co.id AS order_id,
+    e.full_name AS employee_name,
+    co.total_amount,
+    COUNT(*) OVER (PARTITION BY co.employee_id) AS total_orders_by_employee
+FROM client_order co
+JOIN employee e ON co.employee_id = e.id
+ORDER BY e.full_name, co.created_date;
+
+--6.2 Накопительное количество заказов по каждому сотруднику во времени
+SELECT 
+    e.full_name AS employee_name,
+    co.id AS order_id,
+    co.created_date,
+    COUNT(*) OVER (
+        PARTITION BY co.employee_id 
+        ORDER BY co.created_date
+    ) AS cumulative_orders
+FROM client_order co
+JOIN employee e ON co.employee_id = e.id;
+
+--8.1 Средняя сумма заказов клиентов, близких по стоимости (±100 000)
+SELECT 
+    id AS order_id,
+    total_amount,
+    ROUND(
+        AVG(total_amount) OVER (
+            ORDER BY total_amount
+            RANGE BETWEEN 100000 PRECEDING AND 100000 FOLLOWING
+        )
+    ) AS avg_amount_in_range
+FROM client_order;
+
+--9.2  RANK() — Ранжирование сотрудников по общей сумме выполненных заказов
+WITH EmployeeRevenue AS (
+    SELECT 
+        e.id,
+        e.full_name,
+        e.position,
+        COALESCE(SUM(co.total_amount), 0) AS total_revenue
+    FROM employee e
+    LEFT JOIN client_order co 
+        ON e.id = co.employee_id 
+        AND co.status = 'выполнен'
+    GROUP BY e.id, e.full_name, e.position
+)
+SELECT 
+    full_name,
+    position,
+    total_revenue,
+    RANK() OVER (ORDER BY total_revenue DESC) AS revenue_rank
+FROM EmployeeRevenue;
+
+--10.2 Следующий визит клиента и интервал между заказами
+SELECT 
+    c.full_name AS client_name,
+    co.id AS order_id,
+    co.created_date AS current_visit,
+    LEAD(co.created_date) OVER (
+        PARTITION BY co.id_client 
+        ORDER BY co.created_date
+    ) AS next_visit,
+    (
+        LEAD(co.created_date) OVER (
+            PARTITION BY co.id_client 
+            ORDER BY co.created_date
+        ) - co.created_date
+    ) AS days_until_next
+FROM client_order co
+JOIN client c ON co.id_client = c.id
+WHERE co.status = 'выполнен';
+
+
+
+
+
+
