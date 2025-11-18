@@ -86,17 +86,48 @@ ROLLBACK;
 ### 2.1. READ UNCOMMITTED / READ COMMITTED
 2.1.1. 
 ``` sql
+-- T1:
+BEGIN;
+UPDATE client SET email = 'грязные_uncommitted@mail.ru' WHERE id = 3;
+SELECT id, full_name, email FROM client WHERE id = 3; -- Скриншот 1: данные изменены в T1
 
+-- T2:
+BEGIN;
+SET TRANSACTION ISOLATION LEVEL READ UNCOMMITTED;
+SELECT id, full_name, email FROM client WHERE id = 3; -- Скриншот 2: проверка грязных данных в READ UNCOMMITTED
+COMMIT;
+
+-- T1:
+ROLLBACK;
+SELECT id, full_name, email FROM client WHERE id = 3; -- Скриншот 3: откат изменений
 ```
 Описание результата:
-![Скриншот](screenshots4/2.1.1.png)
+![Скриншот](screenshots4/2.1.1.1.png)
+![Скриншот](screenshots4/2.1.1.2.png)
+![Скриншот](screenshots4/2.1.1.3.png)
 
 2.1.2.
 ``` sql
+-- T1:
+BEGIN;
+UPDATE client_order SET status = 'отменен' WHERE id = 4;
+SELECT id, status, total_amount FROM client_order WHERE id = 4; -- Скриншот 1: данные изменены в T1
+
+-- T2:
+BEGIN;
+SET TRANSACTION ISOLATION LEVEL READ COMMITTED;
+SELECT id, status, total_amount FROM client_order WHERE id = 4; -- Скриншот 2: проверка грязных данных в READ COMMITTED
+COMMIT;
+
+-- T1:
+ROLLBACK;
+SELECT id, status, total_amount FROM client_order WHERE id = 4; -- Скриншот 3: откат изменений
 
 ```
 Описание результата:
-![Скриншот](screenshots4/2.1.2.png)
+![Скриншот](screenshots4/2.1.2.1.png)
+![Скриншот](screenshots4/2.1.2.2.png)
+![Скриншот](screenshots4/2.1.2.3.png)
 
 ### 2.2 READ COMMITTED
 2.2.1. Изменение статуса сотрудника
@@ -126,10 +157,37 @@ COMMIT;
 
 2.2.2.
 ``` sql
+-- T1: Начинаем транзакцию и делаем первое чтение баланса
+BEGIN;
+SET TRANSACTION ISOLATION LEVEL READ COMMITTED;
 
+SELECT card_number, points_balance 
+FROM loyalty_card 
+WHERE card_number = 1002;
+-- СКРИНШОТ 1: Первое чтение - исходный баланс
+
+-- T2: Начисляем бонусы и фиксируем изменения
+BEGIN;
+UPDATE loyalty_card 
+SET points_balance = points_balance + 150 
+WHERE card_number = 1002;
+COMMIT;
+-- СКРИНШОТ 2: T2 начислил бонусы и закоммитил
+
+-- T1: Делаем второе чтение в той же транзакции
+SELECT card_number, points_balance 
+FROM loyalty_card 
+WHERE card_number = 1002;
+-- СКРИНШОТ 3: Второе чтение - баланс ИЗМЕНИЛСЯ (неповторяющееся чтение)
+
+COMMIT;
+-- СКРИНШОТ 4: Фиксируем транзакцию T1
 ```
 Описание результата:
-![Скриншот](screenshots4/2.2.2.png)
+![Скриншот](screenshots4/2.2.2.1.png)
+![Скриншот](screenshots4/2.2.2.2.png)
+![Скриншот](screenshots4/2.2.2.3.png)
+![Скриншот](screenshots4/2.2.2.4.png)
 
 ### 2.3. REPEATABLE READ
 2.3.1.
@@ -194,10 +252,57 @@ T1 делает аналогичный запрос, но сотрудник в�
 ## Танзакция с несколькими изменениями и точкой сохранения
 3.1.
 ``` sql
+-- T1: Начинаем транзакцию
+BEGIN;
 
+-- Изменение 1: Обновляем email клиента
+UPDATE client SET email = 'клиент_обновленный@mail.ru' WHERE id = 5;
+SELECT 'После изменения 1' as этап, id, full_name, email FROM client WHERE id = 5;
+-- СКРИНШОТ 1: Email обновлен
+
+-- Изменение 2: Обновляем телефон клиента  
+UPDATE client SET phone_number = '+79169998877' WHERE id = 5;
+SELECT 'После изменения 2' as этап, id, full_name, phone_number FROM client WHERE id = 5;
+-- СКРИНШОТ 2: Телефон обновлен
+
+-- Создаем точку сохранения
+SAVEPOINT my_savepoint;
+
+-- Изменение 3: Обновляем бонусные баллы (потенциально проблемное изменение)
+UPDATE loyalty_card SET points_balance = points_balance + 500 WHERE id_client = 5;
+SELECT 'После изменения 3' as этап, card_number, points_balance FROM loyalty_card WHERE id_client = 5;
+-- СКРИНШОТ 3: Баллы обновлены
+
+-- Имитируем проблему - откатываемся к точке сохранения
+ROLLBACK TO SAVEPOINT my_savepoint;
+
+-- Проверяем, что изменения до SAVEPOINT сохранились
+SELECT 'После ROLLBACK TO SAVEPOINT' as этап, 
+       c.id, c.full_name, c.email, c.phone_number,
+       lc.points_balance
+FROM client c
+LEFT JOIN loyalty_card lc ON c.id = lc.id_client
+WHERE c.id = 5;
+-- СКРИНШОТ 4: Email и телефон сохранились, баллы - исходные
+
+-- Фиксируем транзакцию
+COMMIT;
+
+-- Финальная проверка
+SELECT 'После COMMIT' as этап, 
+       c.id, c.full_name, c.email, c.phone_number,
+       lc.points_balance
+FROM client c
+LEFT JOIN loyalty_card lc ON c.id = lc.id_client
+WHERE c.id = 5;
+-- СКРИНШОТ 5: Итоговое состояние данных
 ```
 Описание результата:
-![Скриншот](screenshots4/3.1.png)
+![Скриншот](screenshots4/3.1.1.png)
+![Скриншот](screenshots4/3.1.2.png)
+![Скриншот](screenshots4/3.1.3.png)
+![Скриншот](screenshots4/3.1.4.png)
+![Скриншот](screenshots4/3.1.5.png)
 
 ## Транзакция с двумя SAVEPOINT
 3.2.
