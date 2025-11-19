@@ -317,10 +317,73 @@ T1 все еще видит 4 клиента
 ### 2.4. SERIALIZABLE
 2.4.1.
 ``` sql
+-- Первый запуск транзакций
+-- T1: Чтение данных из таблицы клиентов
+BEGIN;
+SET TRANSACTION ISOLATION LEVEL SERIALIZABLE;
+SELECT COUNT(*) FROM client;
+-- СКРИНШОТ 1: T1 прочитала количество клиентов
 
+-- T2: Чтение тех же данных и вставка нового клиента
+BEGIN;
+SET TRANSACTION ISOLATION LEVEL SERIALIZABLE;
+SELECT COUNT(*) FROM client;
+INSERT INTO client (full_name, phone_number, driver_license) 
+VALUES ('Client A', '+79160000001', 'DL001');
+-- СКРИНШОТ 2: T2 вставила клиента
+
+-- T2: Успешное завершение
+COMMIT; 
+
+-- T1: Вставка клиента
+INSERT INTO client (full_name, phone_number, driver_license) 
+VALUES ('Client B', '+79160000002', 'DL002');
+
+-- T1: Попытка завершить транзакцию 
+COMMIT; 
+-- СКРИНШОТ 2: Ошибка сериализации в T1
+
+-- Второй запуск транзакций (после ошибки)
+-- T1: Чтение данных из таблицы клиентов
+BEGIN;
+SET TRANSACTION ISOLATION LEVEL SERIALIZABLE;
+SELECT COUNT(*) FROM client;
+-- СКРИНШОТ 3: T1 прочитала обновленное количество клиентов
+
+-- T2: Чтение тех же данных и вставка нового клиента
+BEGIN;
+SET TRANSACTION ISOLATION LEVEL SERIALIZABLE;
+SELECT COUNT(*) FROM client;
+INSERT INTO client (full_name, phone_number, driver_license) 
+VALUES ('Client A', '+79160000001', 'DL001');
+COMMIT;
+-- СКРИНШОТ 4: Ошибка уникальности в T2
+
+-- T1: Вставка нового клиента 
+INSERT INTO client (full_name, phone_number, driver_license) 
+VALUES ('Client B', '+79160000002', 'DL002');
+
+-- T1: Успешное завершение
+COMMIT; 
+
+-- Проверка результата
+SELECT id, full_name, phone_number, driver_license 
+FROM client 
+WHERE full_name LIKE 'Client%';
+-- СКРИНШОТ 5: Итоговые данные в таблице
 ```
 **Описание результата:**
-![Скриншот](screenshots4/2.4.1.png)
+Первый запуск:
+T1 и T2 читают одни и те же данные. T2 вставляет клиента и коммитит. T1 пытается вставить другого клиента и коммитит → ошибка сериализации
+
+Второй запуск:
+T1 читает обновленные данные. T2 пытается вставить того же клиента → ошибка уникальности. T1 успешно вставляет клиента и коммитит
+
+![Скриншот](screenshots4/2.4.1.1.png)
+![Скриншот](screenshots4/2.4.1.2.png)
+![Скриншот](screenshots4/2.4.1.3.png)
+![Скриншот](screenshots4/2.4.1.4.png)
+![Скриншот](screenshots4/2.4.1.5.png)
 
 2.4.2.
 ``` sql
