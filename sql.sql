@@ -178,6 +178,57 @@ CREATE TABLE client_order_services (
 
 
 
+-- Добавление данных в таблицы
+INSERT INTO client (full_name, phone_number, email, driver_license) VALUES 
+('Белова Анастасия Петровна', '+79164445566', 'belovaanastasiya@gmail.com', '71СС453423'), 
+('Соколов Роман Дмитриевич', '+79168889900', 'sokolov95@yandex.ru', '77KK345118');
+
+UPDATE public.loyalty_card
+SET id_client=3, registration_date='2023-03-10', last_visit_date='2024-01-08', points_balance=800
+WHERE card_number=1003;
+
+-- Добавляем заказы с разными статусами для одних и тех же клиентов
+INSERT INTO client_order (id_client, id_car, id_location, employee_id, total_amount, status, created_date, completion_date, priority) VALUES
+(1, 1, 1, 1, 300000, 'выполнен', '2024-01-05 10:00:00', '2024-01-05 16:00:00', 'обычный'),
+(1, 1, 1, 1, 150000, 'в работе', '2024-01-15 09:30:00', NULL, 'обычный'),
+(1, 1, 1, 1, 200000, 'отменен', '2024-01-10 14:20:00', NULL, 'обычный');
+
+INSERT INTO client_order (id_client, id_car, id_location, employee_id, total_amount, status, created_date, completion_date, priority) VALUES
+(2, 2, 1, 1, 250000, 'выполнен', '2024-01-06 11:00:00', '2024-01-06 17:00:00', 'высокий'),
+(2, 2, 1, 1, 180000, 'в работе', '2024-01-16 10:15:00', NULL, 'обычный'),
+(2, 2, 1, 1, 120000, 'отменен', '2024-01-12 15:45:00', NULL, 'низкий');
+INSERT INTO client_order (id_client, id_car, id_location, employee_id, total_amount, status, created_date, completion_date, priority) VALUES
+(3, 3, 2, 4, 400000, 'выполнен', '2024-01-07 12:30:00', '2024-01-07 18:00:00', 'обычный'),
+(3, 3, 2, 4, 220000, 'в работе', '2024-01-17 11:20:00', NULL, 'обычный');
+
+INSERT INTO client_order (id_client, id_car, id_location, employee_id, total_amount, status, created_date, completion_date, priority) VALUES
+(4, 4, 1, 1, 150000, 'выполнен', '2024-01-08 13:15:00', '2024-01-08 15:30:00', 'низкий');
+
+INSERT INTO client_order (id_client, id_car, id_location, employee_id, total_amount, status, created_date, completion_date, priority) VALUES
+(5, 5, 2, 4, 350000, 'выполнен', '2024-01-09 08:45:00', '2024-01-09 14:20:00', 'срочный'),
+(5, 5, 2, 4, 280000, 'в работе', '2024-01-18 13:10:00', NULL, 'обычный'),
+(5, 5, 2, 4, 190000, 'отменен', '2024-01-14 16:30:00', NULL, 'высокий');
+
+-- Добавляем второй заказ для Иванова (id_client = 1, id_car = 1)
+INSERT INTO client_order (
+    id_client, id_car, id_location, employee_id, 
+    total_amount, status, created_date, completion_date, 
+    notes, priority
+) VALUES
+(1, 1, 1, 1, 320000, 'выполнен', '2024-02-15 10:00:00', '2024-02-15 13:00:00', 'Замена масла и фильтра', 'обычный'),
+(1, 1, 1, 1, 180000, 'выполнен', '2024-03-10 09:15:00', '2024-03-10 11:00:00', 'Диагностика + лампы', 'низкий');
+
+-- Добавляем второй заказ для Сидорова (id_client = 5, id_car = 5)
+INSERT INTO client_order (
+    id_client, id_car, id_location, employee_id, 
+    total_amount, status, created_date, completion_date, 
+    notes, priority
+) VALUES
+(5, 5, 2, 4, 450000, 'выполнен', '2024-02-20 14:00:00', '2024-02-20 16:30:00', 'Замена тормозных колодок', 'обычный');
+
+
+
+
 SELECT table_name 
 FROM information_schema.tables 
 WHERE table_schema = 'public';
@@ -404,6 +455,57 @@ INSERT INTO client_order_services (id_order, service_price_id, quantity, unit_pr
 (4, 9, 1, 10000),   -- Замена ламп
 (5, 6, 1, 40000),   -- Шиномонтаж
 (5, 7, 1, 60000);   -- Развал-схождение
+
+
+
+
+-- Добавление данных в таблицы
+INSERT INTO client (full_name, phone_number, email, driver_license) VALUES 
+('Белова Анастасия Петровна', '+79164445566', 'belovaanastasiya@gmail.com', '71СС453423'), 
+('Соколов Роман Дмитриевич', '+79168889900', 'sokolov95@yandex.ru', '77KK345118');
+
+UPDATE public.loyalty_card
+SET id_client=3, registration_date='2023-03-10', last_visit_date='2024-01-08', points_balance=800
+WHERE card_number=1003;
+
+-- Добавляем заказы с разными статусами для одних и тех же клиентов
+INSERT INTO client_order (id_client, id_car, id_location, employee_id, total_amount, status, created_date, completion_date, priority) VALUES
+(1, 1, 1, 1, 300000, 'выполнен', '2024-01-05 10:00:00', '2024-01-05 16:00:00', 'обычный'),
+(1, 1, 1, 1, 150000, 'в работе', '2024-01-15 09:30:00', NULL, 'обычный'),
+(1, 1, 1, 1, 200000, 'отменен', '2024-01-10 14:20:00', NULL, 'обычный');
+
+INSERT INTO client_order (id_client, id_car, id_location, employee_id, total_amount, status, created_date, completion_date, priority) VALUES
+(2, 2, 1, 1, 250000, 'выполнен', '2024-01-06 11:00:00', '2024-01-06 17:00:00', 'высокий'),
+(2, 2, 1, 1, 180000, 'в работе', '2024-01-16 10:15:00', NULL, 'обычный'),
+(2, 2, 1, 1, 120000, 'отменен', '2024-01-12 15:45:00', NULL, 'низкий');
+INSERT INTO client_order (id_client, id_car, id_location, employee_id, total_amount, status, created_date, completion_date, priority) VALUES
+(3, 3, 2, 4, 400000, 'выполнен', '2024-01-07 12:30:00', '2024-01-07 18:00:00', 'обычный'),
+(3, 3, 2, 4, 220000, 'в работе', '2024-01-17 11:20:00', NULL, 'обычный');
+
+INSERT INTO client_order (id_client, id_car, id_location, employee_id, total_amount, status, created_date, completion_date, priority) VALUES
+(4, 4, 1, 1, 150000, 'выполнен', '2024-01-08 13:15:00', '2024-01-08 15:30:00', 'низкий');
+
+INSERT INTO client_order (id_client, id_car, id_location, employee_id, total_amount, status, created_date, completion_date, priority) VALUES
+(5, 5, 2, 4, 350000, 'выполнен', '2024-01-09 08:45:00', '2024-01-09 14:20:00', 'срочный'),
+(5, 5, 2, 4, 280000, 'в работе', '2024-01-18 13:10:00', NULL, 'обычный'),
+(5, 5, 2, 4, 190000, 'отменен', '2024-01-14 16:30:00', NULL, 'высокий');
+
+-- Добавляем второй заказ для Иванова (id_client = 1, id_car = 1)
+INSERT INTO client_order (
+    id_client, id_car, id_location, employee_id, 
+    total_amount, status, created_date, completion_date, 
+    notes, priority
+) VALUES
+(1, 1, 1, 1, 320000, 'выполнен', '2024-02-15 10:00:00', '2024-02-15 13:00:00', 'Замена масла и фильтра', 'обычный'),
+(1, 1, 1, 1, 180000, 'выполнен', '2024-03-10 09:15:00', '2024-03-10 11:00:00', 'Диагностика + лампы', 'низкий');
+
+-- Добавляем второй заказ для Сидорова (id_client = 5, id_car = 5)
+INSERT INTO client_order (
+    id_client, id_car, id_location, employee_id, 
+    total_amount, status, created_date, completion_date, 
+    notes, priority
+) VALUES
+(5, 5, 2, 4, 450000, 'выполнен', '2024-02-20 14:00:00', '2024-02-20 16:30:00', 'Замена тормозных колодок', 'обычный');
 
 
 
@@ -856,5 +958,123 @@ WHERE co.status = 'выполнен';
 
 
 
+--transaction.md
+--- 1.1.2. Добавление товара в заказ клиента и обновление остатков товаров
+BEGIN;
+-- Добавляем товар в заказ клиента
+INSERT INTO client_order_items (id_order, product_price_id, quantity, unit_price) 
+VALUES (1, 1, 2, 1500);
+-- Обновляем остатки товаров на складе
+UPDATE remains_of_goods SET quantity = quantity - 2 
+WHERE location_id = 1 AND article = (SELECT article FROM product_prices WHERE id = 1);
+COMMIT;
 
 
+--Восстанавливаем остатки товаров на складе
+UPDATE remains_of_goods SET quantity = quantity + 2 
+WHERE location_id = 1 AND article = (SELECT article FROM product_prices WHERE id = 1);
+
+-- Удаляем добавленную запись из заказа
+DELETE FROM client_order_items 
+WHERE id_order = 1 
+AND product_price_id = 1 
+AND quantity = 2 
+AND unit_price = 1500;
+
+--1.2.2. Откат добавления товара в заказ и обновления остатков
+BEGIN;
+-- Добавляем товар в заказ клиента
+INSERT INTO client_order_items (id_order, product_price_id, quantity, unit_price) 
+VALUES (1, 1, 2, 1500);
+-- Обновляем остатки товаров на складе
+UPDATE remains_of_goods SET quantity = quantity - 2 
+WHERE location_id = 1 AND article = (SELECT article FROM product_prices WHERE id = 1);
+ROLLBACK;
+
+--1.3.2. Ошибка при добавлении товара в заказ и обновлении остатков
+BEGIN;
+-- Добавляем товар в заказ клиента
+INSERT INTO client_order_items (id_order, product_price_id, quantity, unit_price) 
+VALUES (1, 1, -5, 1500);  -- Ошибка: CHECK (quantity > 0)
+-- Обновляем остатки товаров на складе (этот код не выполнился)
+UPDATE remains_of_goods SET quantity = quantity - 2 
+WHERE location_id = 1 AND article = (SELECT article FROM product_prices WHERE id = 1);
+COMMIT;
+
+-- 1.1.2. Успешная транзакция с COMMIT
+-- Результат: Обе операции успешно выполнены - товар добавлен в заказ и остатки на складе уменьшены. Изменения сохранены в базе данных.
+
+-- 1.2.2. Транзакция с ROLLBACK
+-- Результат: Все изменения откатываются - товар не добавляется в заказ и остатки на складе не уменьшаются. База данных возвращается в исходное состояние.
+
+-- 1.3.2. Транзакция с ошибкой CHECK-ограничения
+-- Результат: Транзакция автоматически откатывается из-за ошибки нарушения CHECK (quantity > 0). Ни одна из операций не выполняется - ни добавление товара с отрицательным количеством, ни обновление остатков.
+
+
+--2.3.2.
+-- T1: Делает SELECT на количество клиентов с email @mail.ru - 4
+BEGIN TRANSACTION ISOLATION LEVEL REPEATABLE READ;
+SELECT COUNT(*) FROM client WHERE email LIKE '%@mail.ru%';
+
+-- T2: Вставка новой записи с email @mail.ru
+BEGIN;
+INSERT INTO client (full_name, phone_number, email, driver_license) 
+VALUES ('Фантомный Клиент', '+79169998877', 'phantom@mail.ru', 'PHANTOM123');
+COMMIT;
+
+-- T1: Повторный SELECT - все равно 4 (фантомное чтение предотвращено)
+SELECT COUNT(*) FROM client WHERE email LIKE '%@mail.ru%';
+COMMIT;
+
+-- После COMMIT видим реальное количество клиентов - 5
+SELECT COUNT(*) FROM client WHERE email LIKE '%@mail.ru%';
+
+--- удаляем не нужного клиента  
+SELECT * FROM client WHERE email = 'phantom@mail.ru';
+
+-- В REPEATABLE READ транзакция видит снимок данных на момент своего начала. Несмотря на то, что T2 добавил нового клиента и закоммитил изменения, T1 продолжает видеть исходное количество клиентов до завершения своей транзакции.
+
+
+DELETE FROM client 
+WHERE full_name = 'Client B' 
+
+--2.4.2
+-- Первый запуск транзакций
+-- T1: Чтение данных из таблицы клиентов
+BEGIN TRANSACTION ISOLATION LEVEL SERIALIZABLE;
+SELECT COUNT(*) FROM client;
+
+-- T2: Чтение тех же данных и вставка нового клиента
+BEGIN TRANSACTION ISOLATION LEVEL SERIALIZABLE;
+SELECT COUNT(*) FROM client;
+INSERT INTO client (full_name, phone_number, driver_license) 
+VALUES ('Client A', '+79160000001', 'DL001');
+
+-- T2: Успешное завершение
+COMMIT; 
+
+-- T1: Вставка клиента
+INSERT INTO client (full_name, phone_number, driver_license) 
+VALUES ('Client B', '+79160000002', 'DL002');
+
+-- T1: Попытка завершить транзакцию 
+COMMIT; -- не удалось сериализовать доступ из-за зависимостей чтения/записи между транзакциями
+
+-- Второй запуск транзакций
+-- T1: Чтение данных из таблицы клиентов
+BEGIN TRANSACTION ISOLATION LEVEL SERIALIZABLE;
+SELECT COUNT(*) FROM client;
+
+-- T2: Чтение тех же данных и вставка нового клиента
+BEGIN TRANSACTION ISOLATION LEVEL SERIALIZABLE;
+SELECT COUNT(*) FROM client;
+INSERT INTO client (full_name, phone_number, driver_license) 
+VALUES ('Client A', '+79160000001', 'DL001');
+COMMIT; -- повторяющееся значение ключа нарушает ограничение уникальности
+
+-- T1: Вставка нового клиента 
+INSERT INTO client (full_name, phone_number, driver_license) 
+VALUES ('Client B', '+79160000002', 'DL002');
+
+-- T1: Успешное завершение
+COMMIT; 
