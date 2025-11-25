@@ -1138,12 +1138,12 @@ DECLARE
 	f_discount_percent NUMERIC;
     final_total INT;	
 BEGIN
-    -- Сумма всех товаров в заказе с COALESCE
+    -- Сумма всех товаров в заказе
 	SELECT COALESCE(SUM(total_price), 0) INTO total_items
 	FROM client_order_items
 	WHERE id_order = f_order_id; 
 
-	-- Сумма всех услуг в заказе с COALESCE
+	-- Сумма всех услуг в заказе 
 	SELECT COALESCE(SUM(total_price), 0) INTO total_services
 	FROM client_order_services
 	WHERE id_order = f_order_id; 
@@ -1157,7 +1157,7 @@ BEGIN
     INNER JOIN loyalty_card lc ON co.id_client = lc.id_client
     WHERE co.id = f_order_id;
 
-	-- Максимальная доступная скидка по баллам с COALESCE
+	-- Максимальная доступная скидка по баллам 
     SELECT COALESCE(MAX(discount_percent), 0) INTO f_discount_percent
     FROM loyalty_rules
     WHERE min_points <= client_points;
