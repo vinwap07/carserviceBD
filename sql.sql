@@ -1072,3 +1072,193 @@ WHERE full_name = 'Client B'
 
 DELETE FROM client 
 WHERE full_name = 'Client A' 
+
+
+
+
+--fn_proc.md
+--1.3. Процедура для добавления нового клиента с картой лояльности
+CREATE OR REPLACE PROCEDURE add_client_with_loyalty(
+	new_full_name VARCHAR(100),
+	new_phone_number VARCHAR(12),
+	new_email VARCHAR(100),
+	new_driver_license VARCHAR(20)
+)
+LANGUAGE plpgsql
+AS $$
+DECLARE
+	new_client_id INT;
+BEGIN
+	-- вставка нового клиента
+	INSERT INTO client (full_name, phone_number, email, driver_license)
+	VALUES (new_full_name, new_phone_number, new_email, new_driver_license);
+
+    -- id нового клиента
+	SELECT id INTO new_client_id
+	FROM client
+	WHERE driver_license = new_driver_license;
+
+    -- создание карты лояльности для клиента
+	INSERT INTO loyalty_card (id_client, registration_date, points_balance)
+	VALUES (new_client_id, CURRENT_DATE, 0);
+END;
+$$;
+
+CALL add_client_with_loyalty('Петрова Мария Ивановна', '+79167654321', 'petrova@mail.ru', 'CD987654321');
+
+SELECT c.id, c.full_name, c.phone_number, c.driver_license, lc.card_number, lc.points_balance
+FROM client c
+INNER JOIN loyalty_card lc ON c.id = lc.id_client;
+
+--2.3. Функция для получения текущего баланса баллов лояльности клиента
+CREATE OR REPLACE FUNCTION get_client_points(f_full_name VARCHAR(100), f_phone_number VARCHAR(12))
+RETURNS INT
+LANGUAGE plpgsql
+AS $$
+BEGIN
+	RETURN (SELECT points_balance
+			FROM loyalty_card 
+			INNER JOIN client ON loyalty_card.id_client = client.id
+			WHERE full_name = f_full_name AND phone_number = f_phone_number);
+END;
+$$;
+
+SELECT get_client_points('Федорова Елена Александровна', '+79166789012') AS loyalty_points;
+
+--2.6 Итоговая сумма заказа клиента с учетом скидки по баллам лояльности
+CREATE OR REPLACE FUNCTION calculate_order_total_with_discount(f_order_id INT)
+RETURNS INT
+LANGUAGE plpgsql
+AS $$
+DECLARE
+	total_items INT;
+	total_services INT;
+	total_without_discount INT;
+	client_points INT;
+	f_discount_percent NUMERIC;
+    final_total INT;	
+BEGIN
+    -- Сумма всех товаров в заказе с COALESCE
+	SELECT COALESCE(SUM(total_price), 0) INTO total_items
+	FROM client_order_items
+	WHERE id_order = f_order_id; 
+
+	-- Сумма всех услуг в заказе с COALESCE
+	SELECT COALESCE(SUM(total_price), 0) INTO total_services
+	FROM client_order_services
+	WHERE id_order = f_order_id; 
+
+	-- Общая сумма без скидки
+    total_without_discount := total_items + total_services;
+
+	-- Баллы лояльности клиента 
+    SELECT COALESCE(lc.points_balance, 0) INTO client_points
+    FROM client_order co
+    INNER JOIN loyalty_card lc ON co.id_client = lc.id_client
+    WHERE co.id = f_order_id;
+
+	-- Максимальная доступная скидка по баллам с COALESCE
+    SELECT COALESCE(MAX(discount_percent), 0) INTO f_discount_percent
+    FROM loyalty_rules
+    WHERE min_points <= client_points;
+
+	-- Итоговая сумма со скидкой
+    final_total := total_without_discount * (1 - f_discount_percent / 100);
+
+	RETURN final_total;
+END;
+$$;
+
+SELECT calculate_order_total_with_discount(1) AS final_amount;
+
+-- Добавление данных (сначала выполнить 3.3, потом добавляем, потом опять 3.3)
+-- Добавляем товары в выполненные заказы где total_amount = 0
+INSERT INTO client_order_items (id_order, product_price_id, quantity, unit_price)
+SELECT 
+    co.id, 
+    (SELECT id FROM product_prices ORDER BY RANDOM() LIMIT 1),
+    FLOOR(RANDOM() * 5 + 1)::INTEGER,
+    FLOOR(RANDOM() * 5000 + 500)::INTEGER
+FROM client_order co
+WHERE co.status = 'выполнен' 
+AND co.total_amount = 0
+AND NOT EXISTS (SELECT 1 FROM client_order_items WHERE id_order = co.id);
+
+-- Добавляем услуги в выполненные заказы где total_amount = 0
+INSERT INTO client_order_services (id_order, service_price_id, quantity, unit_price)
+SELECT 
+    co.id, 
+    (SELECT id FROM service_prices ORDER BY RANDOM() LIMIT 1),
+    1,
+    FLOOR(RANDOM() * 10000 + 1000)::INTEGER
+FROM client_order co
+WHERE co.status = 'выполнен' 
+AND co.total_amount = 0
+AND NOT EXISTS (SELECT 1 FROM client_order_services WHERE id_order = co.id);
+
+--3.3. Обновленные суммы в выполненных заказах, рассчитанные с учетом скидки по баллам лояльности клиентов.
+DO $$
+BEGIN
+    UPDATE client_order 
+    SET total_amount = calculate_order_total_with_discount(id)
+    WHERE status = 'выполнен';
+END $$;
+
+--6.1. Процедура для добавления 100 баллов первым 3 клиентам с наибольшим количеством заказов
+CREATE OR REPLACE PROCEDURE add_points_to_top_clients()
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    client_id INTEGER;
+    i INTEGER := 1;
+BEGIN
+    WHILE i <= 3 LOOP
+        SELECT co.id_client INTO client_id
+        FROM client_order co
+        GROUP BY co.id_client
+        ORDER BY COUNT(*) DESC
+        LIMIT 1
+        OFFSET i - 1;
+        
+        UPDATE loyalty_card 
+        SET points_balance = points_balance + 100
+        WHERE id_client = client_id;
+        
+        i := i + 1;
+    END LOOP;
+END;
+$$;
+
+CALL add_points_to_top_clients();
+
+--7.2. Функция для расчета средней суммы заказа клиента с обработкой деления на ноль
+CREATE OR REPLACE FUNCTION calculate_avg_order_amount(f_client_id INTEGER)
+RETURNS NUMERIC
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    f_total_orders INTEGER;
+    f_total_amount INTEGER;
+    f_avg_amount NUMERIC;
+BEGIN
+    SELECT COUNT(*), COALESCE(SUM(total_amount), 0)
+    INTO f_total_orders, f_total_amount
+    FROM client_order
+    WHERE id_client = f_client_id;
+    
+    f_avg_amount := f_total_amount / f_total_orders;
+    
+    RETURN f_avg_amount;
+    
+EXCEPTION
+    WHEN division_by_zero THEN
+        RAISE NOTICE 'У клиента ID % нет заказов', f_client_id;
+        RETURN 0;
+	WHEN OTHERS THEN
+		RAISE NOTICE 'Ошибка расчета';
+	    RETURN -1;
+END;
+$$;
+
+SELECT calculate_avg_order_amount(1); 
+SELECT calculate_avg_order_amount(999); 
