@@ -1,14 +1,26 @@
 ## 1. Процедуры 3 шт + запрос просмотра всех процедур
 ### Процедуры:
-1.1
+1.1 Изменение статуса сотрудника
 ``` sql
+CREATE OR REPLACE PROCEDURE update_emloyee_status(
+	employee_id INTEGER, 
+	new_status employee_status
+)
+LANGUAGE plpgsql 
+AS $$ 
+BEGIN 
+	UPDATE employee
+	SET status = new_status
+	WHERE id = employee_id;
+END;
+$$;
 
+CALL update_emloyee_status(1, 'отпуск'::employee_status);
 ```
 ![Скриншот](screenshots5/1.1.png)
 
 1.2. Оформление заказа
 ``` sql
-
 CREATE OR REPLACE PROCEDURE create_car_service_order(
     p_client_id INTEGER,
     p_car_id INTEGER,
@@ -80,15 +92,43 @@ INNER JOIN loyalty_card lc ON c.id = lc.id_client;
 ### Запрос просмотра всех процедур:
 1.4.
 ``` sql
-
+SELECT routine_name, routine_type 
+FROM information_schema."routines" r 
+WHERE r.routine_type = 'PROCEDURE' AND r.routine_schema = 'public';
 ```
 ![Скриншот](screenshots5/1.4.png)
 
 ## 2. Функции 3 шт  + функции с переменными 3 шт + запрос просмотра всех функций
 ### Функции:
-2.1.
+2.1. Расчет итоговой суммы со скидкой по карте лояльности
 ``` sql
+CREATE OR REPLACE FUNCTION calculate_amount_with_sale(
+    client_id INTEGER,
+    amount INTEGER 
+)
+RETURNS INTEGER 
+LANGUAGE plpgsql 
+AS $$
+BEGIN
+    RETURN (
+        WITH client_points AS (
+            SELECT points_balance 
+            FROM loyalty_card 
+            WHERE id_client = client_id
+        ),
+        max_discount AS (
+            SELECT MAX(lr.discount_percent) as discount
+            FROM loyalty_rules lr
+            CROSS JOIN client_points cp
+            WHERE lr.min_points <= cp.points_balance
+        )
+        SELECT amount - (amount * discount / 100)
+        FROM max_discount
+    );
+END;
+$$;
 
+SELECT calculate_amount_with_sale(1, 200000) AS amount_with_discount;
 ```
 ![Скриншот](screenshots5/2.1.png)
 
@@ -151,9 +191,26 @@ SELECT get_client_points('Федорова Елена Александровна
 ![Скриншот](screenshots5/2.3.png)
 
 ### Функции с переменными:
-2.4.
+2.4. Расчет зарплаты сотрудника
 ``` sql
+CREATE OR REPLACE FUNCTION calculate_employee_salary(
+    employee INTEGER
+)
+RETURNS INTEGER 
+LANGUAGE plpgsql 
+AS $$
+DECLARE
+    working_days INTEGER;
+BEGIN
+	SELECT COUNT(*) INTO working_days
+	FROM employee_shift_schedule
+	WHERE employee_id = employee;
+    
+	RETURN working_days * 3000;
+END;
+$$;
 
+SELECT calculate_employee_salary(4) AS salary;
 ```
 ![Скриншот](screenshots5/2.4.png)
 
@@ -257,16 +314,28 @@ SELECT calculate_order_total_with_discount(1) AS final_amount;
 ### Запрос просмотра всех функций:
 2.7.
 ``` sql
-
+SELECT routine_name, routine_type 
+FROM information_schema."routines" r 
+WHERE r.routine_type = 'FUNCTION' AND r.routine_schema = 'public';
 ```
 ![Скриншот](screenshots5/2.7.png)
 
 ## 3. Блок DO 3 шт
-3.1.
+3.1. Повышение базовой стоимости услуги на 10%  
 ``` sql
-
+DO $$
+BEGIN
+    UPDATE service 
+    SET base_price = base_price * 1.1;
+END $$;
 ```
-![Скриншот](screenshots5/3.1.png)
+До: 
+
+![Скриншот](screenshots5/3.1.1.png)
+
+После: 
+
+![Скриншот](screenshots5/3.1.2.png)
 
 3.2. Для обновления статусов сотрудников
 ``` sql
@@ -313,9 +382,43 @@ END $$;
 Стало: ![Скриншот](screenshots5/3.3.2.png)
 
 ## 4. IF 1 шт
-4.1.
+4.1. Определение статуса клиента в зависимости от даты регистрации карты лояльности
 ``` sql
+CREATE OR REPLACE FUNCTION get_client_status(
+    client_id INTEGER
+)
+RETURNS VARCHAR(20) 
+LANGUAGE plpgsql 
+AS $$
+DECLARE
+	registration DATE; 
+	min_reg DATE; 
+	max_reg DATE;
+	status VARCHAR(20);
+BEGIN
+    SELECT registration_date INTO registration
+	FROM loyalty_card 
+	WHERE id_client = client_id;
 
+	SELECT MIN(registration_date) INTO min_reg
+	FROM loyalty_card; 
+	
+	SELECT MAX(registration_date) INTO max_reg
+	FROM loyalty_card; 
+
+	IF registration = min_reg THEN 
+		status := 'старичок';
+	ELSIF registration = max_reg THEN 
+		status := 'сапог';
+	ELSE 
+		status := 'нормис';
+	END IF;
+
+	RETURN status;
+END;
+$$;
+
+SELECT get_client_status(5) AS status;
 ```
 ![Скриншот](screenshots5/4.1.png)
 
