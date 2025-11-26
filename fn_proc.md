@@ -30,28 +30,52 @@ CREATE OR REPLACE PROCEDURE create_car_service_order(
 )
 LANGUAGE plpgsql
 AS $$
-DECLARE
-    new_order_id INTEGER;
 BEGIN
     -- Создаем новый заказ
-    INSERT INTO client_order (id_client, id_car, id_location, employee_id, notes)
-    VALUES (p_client_id, p_car_id, p_location_id, p_employee_id, p_notes)
-    RETURNING id INTO new_order_id;
+    INSERT INTO client_order (id_client, id_car, id_location, employee_id, notes, status)
+    VALUES (p_client_id, p_car_id, p_location_id, p_employee_id, p_notes, 'создан');
     
     -- Обновляем дату последнего визита в карте лояльности
     UPDATE loyalty_card 
     SET last_visit_date = CURRENT_DATE 
     WHERE id_client = p_client_id;
-    
-    RAISE NOTICE 'Создан заказ №% для клиента ID %', new_order_id, p_client_id;
 END;
 $$;
 
-CALL create_car_service_order(1, 1, 1, 1, 'Плановое ТО');
-SELECT * FROM client_order WHERE id_client = 1 ORDER BY id ;
+SELECT 
+    id AS order_id,
+    id_client,
+    created_date,
+    status
+FROM client_order 
+WHERE id_client = 2 
+ORDER BY id DESC 
+LIMIT 2;
+
+CALL create_car_service_order(2, 2, 1, 1, 'Диагностика ходовой');
+
+SELECT 
+    id AS order_id,
+    id_client,
+    created_date,
+    status,
+    notes
+FROM client_order 
+WHERE id_client = 2 
+ORDER BY id DESC 
+LIMIT 3;
+
+SELECT 
+    c.full_name,
+    lc.last_visit_date,
+    lc.points_balance
+FROM loyalty_card lc
+JOIN client c ON lc.id_client = c.id
+WHERE lc.id_client = 2;
 ```
 ![Скриншот](screenshots5/1.2.1.png)
 ![Скриншот](screenshots5/1.2.2.png)
+![Скриншот](screenshots5/1.2.3.png)
 
 1.3. Процедура для добавления нового клиента с картой лояльности
 ``` sql
@@ -134,7 +158,7 @@ SELECT calculate_amount_with_sale(1, 200000) AS amount_with_discount;
 
 2.2. Функция для расчета стоимости замены масла
 ``` sql
-CREATE OR REPLACE FUNCTION calculate_oil_change_cost(
+CREATE OR REPLACE FUNCTION calculate_oil_change_cost_simple(
     p_car_model_id INTEGER,
     p_oil_quantity INTEGER
 )
@@ -146,7 +170,6 @@ DECLARE
     service_cost INTEGER;
     total_cost INTEGER;
 BEGIN
-    -- Получаем цену масла (берем среднюю цену)
     SELECT price INTO oil_price
     FROM product_prices pp
     JOIN nomenclature n ON pp.article = n.article
@@ -154,23 +177,25 @@ BEGIN
     ORDER BY pp.effective_date DESC
     LIMIT 1;
     
-    -- Получаем стоимость услуги замены масла
     SELECT price INTO service_cost
     FROM service_prices
     WHERE service_name = 'Замена масла'
     ORDER BY effective_date DESC
     LIMIT 1;
     
-    -- Расчет общей стоимости
     total_cost := (oil_price * p_oil_quantity) + service_cost;
     
     RETURN total_cost;
 END;
 $$;
 
-SELECT calculate_oil_change_cost(1, 5) AS oil_change_total;
+SELECT 
+    1 AS car_model_id,
+    5 AS oil_quantity,
+    (SELECT model_name FROM car_model WHERE id = 1) AS car_model,
+    calculate_oil_change_cost_simple(1, 5) AS total_cost;
 ```
-![Скриншот](screenshots5/2.2.1.png)
+![Скриншот](screenshots5/2.2.png)
 
 2.3. Функция для получения текущего баланса баллов лояльности клиента по ФИО и номеру
 ``` sql
