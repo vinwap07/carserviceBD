@@ -502,11 +502,47 @@ CALL add_points_to_top_clients();
 Было: ![Скриншот](screenshots5/6.1.1.png)
 Стало: ![Скриншот](screenshots5/6.1.2.png)
 
-6.2.
+6.2. Увольняем топ N малоработающих сотрудников
 ``` sql
+CREATE OR REPLACE PROCEDURE fire_lazy_employees(
+    n INTEGER
+)
+LANGUAGE plpgsql 
+AS $$
+DECLARE 
+    lazy_employee_id INTEGER;
+    i INTEGER := 0;
+BEGIN
+    WHILE i < n LOOP
+        SELECT ess.employee_id INTO lazy_employee_id
+        FROM employee_shift_schedule ess
+        JOIN employee e ON e.id = ess.employee_id AND e.status != 'уволен'
+        GROUP BY ess.employee_id
+        ORDER BY COUNT(ess.id) ASC
+        LIMIT 1;
+        
+        IF lazy_employee_id IS NULL THEN
+            EXIT;
+        END IF;
+        
+        UPDATE employee 
+        SET status = 'уволен'
+        WHERE id = lazy_employee_id;
+        
+        i := i + 1;
+    END LOOP;
+END;
+$$;
 
+CALL fire_lazy_employees(5);
 ```
-![Скриншот](screenshots5/6.2.png)
+До: 
+
+![Скриншот](screenshots5/6.2.1.png)
+
+После: 
+
+![Скриншот](screenshots5/6.2.2.png)
 
 ## 7. EXCEPTION 2 шт
 7.1. Обработка дублирования клиентов
@@ -597,8 +633,41 @@ SELECT calculate_avg_order_amount(999);
 ![Скриншот](screenshots5/7.2.3.png)
 
 ## 8. RAISE 2 шт
-8.1.
+8.1. Проверка на найм людей из черного списка автосервиса
 ``` sql
+CREATE OR REPLACE PROCEDURE add_new_employee(
+    p_position VARCHAR(50),
+    p_location_id INTEGER,
+    p_full_name VARCHAR(100),
+    p_phone_number VARCHAR(12),
+    p_hire_date DATE DEFAULT CURRENT_DATE
+)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+	IF p_full_name IN ('Иванов Петр Ильич', 'Сорокина Ярослава Тимофеевна') THEN 
+		RAISE WARNING 'Вы нанимаете опасных людей!!! Они в черном списке автосервиса'; 
+	END IF; 
+
+    INSERT INTO employee (
+        position,
+        location_id,
+        status,
+        full_name,
+        phone_number,
+        hire_date
+    ) VALUES (
+        p_position,
+        p_location_id,
+        'работает'::employee_status,
+        p_full_name,
+        p_phone_number,
+        p_hire_date
+    );
+END;
+$$;
+
+CALL add_new_employee('механик', 1, 'Иванов Петр Ильич', '+74564561221');
 
 ```
 ![Скриншот](screenshots5/8.1.png)
