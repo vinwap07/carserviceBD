@@ -1,10 +1,37 @@
 ## 1. Триггеры 
 ### NEW:
-1.1
+1.1. Обновление last_visit_date при создании нового заказа клиента.
 ``` sql
+CREATE OR REPLACE FUNCTION update_last_visit_date()
+RETURNS TRIGGER AS $$
+BEGIN
+	UPDATE loyalty_card 
+	SET last_visit_date = CURRENT_DATE
+	WHERE id_client = NEW.id_client;
+	RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
 
+CREATE TRIGGER update_last_visit_trigger
+AFTER INSERT ON client_order
+FOR EACH ROW
+EXECUTE FUNCTION update_last_visit_date();
+
+-- Создаем новый заказ для клиента с id=1
+INSERT INTO client_order (
+    id_client, 
+    id_car, 
+    id_location, 
+    employee_id, 
+    total_amount, 
+    status, 
+    created_date, 
+    priority
+)
+VALUES (1,  1,  1,  1,  500000, 'создан', CURRENT_TIMESTAMP, 'обычный' );
 ```
-![Скриншот](screenshots6/1.1.png)
+Было: ![Скриншот](screenshots6/1.1.1.png)
+Стало (изменилась дата у клиента с id = 1): ![Скриншот](screenshots6/1.1.2.png)
 
 1.2.
 ``` sql
@@ -39,11 +66,68 @@ SELECT id, full_name, email FROM client WHERE id = 1;
 ![Скриншот](screenshots6/1.3.2.png)
 ![Скриншот](screenshots6/1.3.3.png)
 
-1.4.
+1.4. Обновление остатков товаров на точке при доставке заказа от поставщика.
 ``` sql
+CREATE OR REPLACE FUNCTION update_remains_on_supplier_delivery()
+ RETURNS TRIGGER AS $$
+ BEGIN 
+ 	IF OLD.status != 'доставлен' AND NEW.status = 'доставлен' THEN
+		-- Обновление существующих товаров
+		WITH existing_items_to_update AS (
+            SELECT soi.article, soi.quantity
+            FROM supplier_order_items soi
+			WHERE soi.id_order = OLD.id
+            AND EXISTS (
+                SELECT 1 FROM remains_of_goods rg
+                WHERE rg.location_id = OLD.id_location
+                AND rg.article = soi.article
+            )
+        )
 
+        UPDATE remains_of_goods rg
+		SET quantity = rg.quantity + eitu.quantity
+		FROM existing_items_to_update eitu
+        WHERE rg.location_id = OLD.id_location
+        AND rg.article = eitu.article;
+
+		-- Добавление новых товаров
+		WITH new_items_to_insert AS (
+            SELECT soi.article, soi.quantity
+            FROM supplier_order_items soi
+            WHERE soi.id_order = OLD.id
+            AND NOT EXISTS (
+                SELECT 1 FROM remains_of_goods rg
+                WHERE rg.location_id = OLD.id_location
+                AND rg.article = soi.article
+            )
+        )
+
+		INSERT INTO remains_of_goods (location_id, article, quantity)
+        SELECT OLD.id_location, article, quantity
+        FROM new_items_to_insert;
+        
+        -- Обновление даты доставки
+        IF NEW.expected_delivery_date IS NULL THEN
+            NEW.expected_delivery_date := CURRENT_DATE;
+        END IF;
+    END IF;
+    
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER update_remains_on_supplier_delivery_trigger
+AFTER UPDATE ON order_to_supplier
+FOR EACH ROW
+EXECUTE FUNCTION update_remains_on_supplier_delivery();
+
+-- Доставляем заказ
+UPDATE order_to_supplier 
+SET status = 'доставлен'
+WHERE id = 2 AND status = 'отправлен';
 ```
-![Скриншот](screenshots6/1.4.png)
+Было: ![Скриншот](screenshots6/1.4.1.png)
+Стало (изменилось количество у остатков с id=1 и id=2): ![Скриншот](screenshots6/1.4.2.png)
 
 ### BEFORE:
 1.5.
@@ -78,11 +162,35 @@ VALUES ('TESTVIN123456789', 2024, 'А999АА777', 'Черный', 1);
 ![Скриншот](screenshots6/1.6.png)
 
 ### AFTER:
-1.7.
+1.7. Начисление бонусных баллов после выполнения заказа.
 ``` sql
+CREATE OR REPLACE FUNCTION add_loyalty_points()
+RETURNS TRIGGER AS $$
+BEGIN 
+	IF OLD.status != 'выполнен' AND NEW.status = 'выполнен' THEN
+		UPDATE loyalty_card 
+		SET points_balance = points_balance + (NEW.total_amount * 0.01)::integer
+		WHERE id_client = NEW.id_client;
+	END IF;
+	RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
 
+CREATE TRIGGER add_loyalty_points_trigger
+AFTER UPDATE ON client_order
+FOR EACH ROW
+EXECUTE FUNCTION add_loyalty_points();
+
+-- Выполняем заказ
+UPDATE client_order 
+SET 
+    status = 'выполнен',
+    completion_date = CURRENT_TIMESTAMP
+WHERE id = 2
+AND status = 'в работе';
 ```
-![Скриншот](screenshots6/1.7.png)
+Было: ![Скриншот](screenshots6/1.7.1.png)
+Стало (добавились бонусные баллы клиенту с id = 2): ![Скриншот](screenshots6/1.7.2.png)
 
 1.8.
 ``` sql
@@ -109,7 +217,6 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-DROP TRIGGER IF EXISTS before_order_status_update ON client_order;
 CREATE TRIGGER before_order_status_update
 BEFORE UPDATE OF status ON client_order
 FOR EACH ROW
@@ -125,11 +232,41 @@ SELECT id, status, completion_date FROM client_order WHERE id = 2;
 ![Скриншот](screenshots6/1.9.2.png)
 ![Скриншот](screenshots6/1.9.3.png)
 
-1.10.
+1.10. Проверка дублирования телефонов клиентов.
 ``` sql
+CREATE OR REPLACE FUNCTION prevent_duplicate_phone()
+RETURNS TRIGGER AS $$
+BEGIN
+	IF EXISTS (
+		SELECT 1 
+		FROM client 
+		WHERE phone_number = NEW.phone_number AND id != NEW.id
+	) THEN 
+		RAISE EXCEPTION 'Клиент с номером телефона % уже существует', NEW.phone_number;
+	END IF;
+	RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
 
+CREATE TRIGGER prevent_duplicate_phone_trigger
+BEFORE INSERT OR UPDATE ON client
+FOR EACH ROW
+EXECUTE FUNCTION prevent_duplicate_phone();
+
+-- Пробуем вставить дубликат
+INSERT INTO client (full_name, phone_number, email, driver_license) 
+VALUES (
+    'Пушкин Александр Сергеевич',
+    (SELECT phone_number FROM client WHERE id = 1), 
+    'duplicate@test.ru',
+    '77XX000001'
+);
 ```
-![Скриншот](screenshots6/1.10.png)
+Было: ![Скриншот](screenshots6/1.10.1.png)
+
+Сделала INSERT: ![Скриншот](screenshots6/1.10.2.png)
+
+Стало (ничего не добавилось): ![Скриншот](screenshots6/1.10.3.png)
 
 ### Statement level:
 1.11.
@@ -154,7 +291,6 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-DROP TRIGGER IF EXISTS after_mass_delete_client_order ON client_order;
 CREATE TRIGGER after_mass_delete_client_order
 AFTER DELETE ON client_order
 FOR EACH STATEMENT
@@ -172,7 +308,12 @@ AND created_date < '2024-01-01';
 ## 2. Отображение списка триггеров
 2.1.
 ``` sql
-
+SELECT DISTINCT
+    trigger_name,
+    event_object_table as table_name
+FROM information_schema.triggers
+WHERE trigger_schema = 'public'
+ORDER BY event_object_table, trigger_name;
 ```
 ![Скриншот](screenshots6/2.1.png)
 
