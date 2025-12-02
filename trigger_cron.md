@@ -456,9 +456,19 @@ SELECT cron.shelude(
 ```
 ![Скриншот](screenshots6/3.2.png)
 
-3.3.
+3.3. Ежедневная проверка истекших карт лояльности
 ``` sql
-
+SELECT cron.schedule(
+	'daily_loyalty_check',
+	'0 0 * * *'
+	$$
+	-- Если карта зарегистрирована больше 2 лет назад и нет посещений больше года - деактивируем
+	UPDATE loyalty_card 
+	SET points_balance = 0
+	WHERE registration_date < CURRENT_DATE - INTERVAL '2 years'
+	AND (last_visit_date IS NULL OR last_visit_date < CURRENT_DATE - INTERVAL '1 year');
+	$$
+);
 ```
 ![Скриншот](screenshots6/3.3.png)
 
