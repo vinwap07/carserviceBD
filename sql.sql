@@ -1268,7 +1268,6 @@ $$;
 SELECT calculate_avg_order_amount(1); 
 SELECT calculate_avg_order_amount(999); 
 
-<<<<<<< HEAD
 CREATE TABLE client_order_status_log (
     id SERIAL PRIMARY KEY, 
     order_id INTEGER NOT NULL, 
@@ -1276,7 +1275,6 @@ CREATE TABLE client_order_status_log (
     changes_date date DEFAULT CURRENT_DATE NOT NULL,
     FOREIGN KEY (order_id) REFERENCES client_order(id)
 );
-=======
 --1.2
 CREATE OR REPLACE PROCEDURE create_car_service_order(
     p_client_id INTEGER,
@@ -1700,4 +1698,3 @@ ORDER BY event_object_table, trigger_name;
 -- 3.3
 
 
->>>>>>> 0a7fc64dd01f2827584f043d9919018bc99475f0
