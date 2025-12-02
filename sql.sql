@@ -1262,3 +1262,11 @@ $$;
 
 SELECT calculate_avg_order_amount(1); 
 SELECT calculate_avg_order_amount(999); 
+
+CREATE TABLE client_order_status_log (
+    id SERIAL PRIMARY KEY, 
+    order_id INTEGER NOT NULL, 
+    status order_status NOT NULL,
+    changes_date date DEFAULT CURRENT_DATE NOT NULL,
+    FOREIGN KEY (order_id) REFERENCES client_order(id)
+);
