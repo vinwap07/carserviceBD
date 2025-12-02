@@ -175,7 +175,12 @@ CREATE TABLE client_order_services (
   total_price integer GENERATED ALWAYS AS (quantity * unit_price) STORED
 );
 
-
+CREATE TABLE client_order_status_log (
+    id SERIAL PRIMARY KEY, 
+    order_id INTEGER NOT NULL, 
+    status order_status NOT NULL,
+    FOREIGN KEY (order_id) REFERENCES client_order(id)
+);
 
 
 -- Добавление данных в таблицы
@@ -1262,3 +1267,427 @@ $$;
 
 SELECT calculate_avg_order_amount(1); 
 SELECT calculate_avg_order_amount(999); 
+
+--1.2
+CREATE OR REPLACE PROCEDURE create_car_service_order(
+    p_client_id INTEGER,
+    p_car_id INTEGER,
+    p_location_id INTEGER,
+    p_employee_id INTEGER,
+    p_notes TEXT DEFAULT NULL
+)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    -- Создаем новый заказ
+    INSERT INTO client_order (id_client, id_car, id_location, employee_id, notes, status)
+    VALUES (p_client_id, p_car_id, p_location_id, p_employee_id, p_notes, 'создан');
+    
+    -- Обновляем дату последнего визита в карте лояльности
+    UPDATE loyalty_card 
+    SET last_visit_date = CURRENT_DATE 
+    WHERE id_client = p_client_id;
+END;
+$$;
+
+SELECT 
+    id AS order_id,
+    id_client,
+    created_date,
+    status
+FROM client_order 
+WHERE id_client = 2 
+ORDER BY id DESC 
+LIMIT 2;
+
+CALL create_car_service_order(2, 2, 1, 1, 'Диагностика ходовой');
+
+SELECT 
+    id AS order_id,
+    id_client,
+    created_date,
+    status,
+    notes
+FROM client_order 
+WHERE id_client = 2 
+ORDER BY id DESC 
+LIMIT 3;
+
+SELECT 
+    c.full_name,
+    lc.last_visit_date,
+    lc.points_balance
+FROM loyalty_card lc
+JOIN client c ON lc.id_client = c.id
+WHERE lc.id_client = 2;
+
+--2.2
+CREATE OR REPLACE FUNCTION calculate_oil_change_cost_simple(
+    p_car_model_id INTEGER,
+    p_oil_quantity INTEGER
+)
+RETURNS INTEGER
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    oil_price INTEGER;
+    service_cost INTEGER;
+    total_cost INTEGER;
+BEGIN
+    SELECT price INTO oil_price
+    FROM product_prices pp
+    JOIN nomenclature n ON pp.article = n.article
+    WHERE n.name LIKE '%Моторное масло%'
+    ORDER BY pp.effective_date DESC
+    LIMIT 1;
+    
+    SELECT price INTO service_cost
+    FROM service_prices
+    WHERE service_name = 'Замена масла'
+    ORDER BY effective_date DESC
+    LIMIT 1;
+    
+    total_cost := (oil_price * p_oil_quantity) + service_cost;
+    
+    RETURN total_cost;
+END;
+$$;
+
+SELECT 
+    1 AS car_model_id,
+    5 AS oil_quantity,
+    (SELECT model_name FROM car_model WHERE id = 1) AS car_model,
+    calculate_oil_change_cost_simple(1, 5) AS total_cost;
+
+
+
+
+-- trigger_cron.md
+-- 1.1. Обновление last_visit_date при создании нового заказа клиента.
+CREATE OR REPLACE FUNCTION update_last_visit_date()
+RETURNS TRIGGER AS $$
+BEGIN
+	UPDATE loyalty_card 
+	SET last_visit_date = CURRENT_DATE
+	WHERE id_client = NEW.id_client;
+	RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER update_last_visit_trigger
+AFTER INSERT ON client_order
+FOR EACH ROW
+EXECUTE FUNCTION update_last_visit_date();
+
+-- Создаем новый заказ для клиента с id=1
+INSERT INTO client_order (
+    id_client, 
+    id_car, 
+    id_location, 
+    employee_id, 
+    total_amount, 
+    status, 
+    created_date, 
+    priority
+) VALUES (
+    1,  1,  1,  1,  500000, 'создан', CURRENT_TIMESTAMP, 'обычный' );
+	
+-- 1.4. Обновление остатков товаров на точке при доставке заказа от поставщика.
+ CREATE OR REPLACE FUNCTION update_remains_on_supplier_delivery()
+ RETURNS TRIGGER AS $$
+ BEGIN 
+ 	IF OLD.status != 'доставлен' AND NEW.status = 'доставлен' THEN
+		-- Обновление существующих товаров
+		WITH existing_items_to_update AS (
+            SELECT soi.article, soi.quantity
+            FROM supplier_order_items soi
+			WHERE soi.id_order = OLD.id
+            AND EXISTS (
+                SELECT 1 FROM remains_of_goods rg
+                WHERE rg.location_id = OLD.id_location
+                AND rg.article = soi.article
+            )
+        )
+
+        UPDATE remains_of_goods rg
+		SET quantity = rg.quantity + eitu.quantity
+		FROM existing_items_to_update eitu
+        WHERE rg.location_id = OLD.id_location
+        AND rg.article = eitu.article;
+
+		-- Добавление новых товаров
+		WITH new_items_to_insert AS (
+            SELECT soi.article, soi.quantity
+            FROM supplier_order_items soi
+            WHERE soi.id_order = OLD.id
+            AND NOT EXISTS (
+                SELECT 1 FROM remains_of_goods rg
+                WHERE rg.location_id = OLD.id_location
+                AND rg.article = soi.article
+            )
+        )
+
+		INSERT INTO remains_of_goods (location_id, article, quantity)
+        SELECT OLD.id_location, article, quantity
+        FROM new_items_to_insert;
+        
+        -- Обновление даты доставки
+        IF NEW.expected_delivery_date IS NULL THEN
+            NEW.expected_delivery_date := CURRENT_DATE;
+        END IF;
+    END IF;
+    
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER update_remains_on_supplier_delivery_trigger
+AFTER UPDATE ON order_to_supplier
+FOR EACH ROW
+EXECUTE FUNCTION update_remains_on_supplier_delivery();
+
+-- Доставляем заказ
+UPDATE order_to_supplier 
+SET status = 'доставлен'
+WHERE id = 2 AND status = 'отправлен';
+
+-- 1.7. Начисление бонусных баллов после выполнения заказа.
+CREATE OR REPLACE FUNCTION add_loyalty_points()
+RETURNS TRIGGER AS $$
+BEGIN 
+	IF OLD.status != 'выполнен' AND NEW.status = 'выполнен' THEN
+		UPDATE loyalty_card 
+		SET points_balance = points_balance + (NEW.total_amount * 0.01)::integer
+		WHERE id_client = NEW.id_client;
+	END IF;
+	RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER add_loyalty_points_trigger
+AFTER UPDATE ON client_order
+FOR EACH ROW
+EXECUTE FUNCTION add_loyalty_points();
+
+-- Выполняем заказ
+UPDATE client_order 
+SET 
+    status = 'выполнен',
+    completion_date = CURRENT_TIMESTAMP
+WHERE id = 2
+AND status = 'в работе';
+
+-- 1.10. Проверка дублирования телефонов клиентов.
+CREATE OR REPLACE FUNCTION prevent_duplicate_phone()
+RETURNS TRIGGER AS $$
+BEGIN
+	IF EXISTS (
+		SELECT 1 
+		FROM client 
+		WHERE phone_number = NEW.phone_number AND id != NEW.id
+	) THEN 
+		RAISE EXCEPTION 'Клиент с номером телефона % уже существует', NEW.phone_number;
+	END IF;
+	RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER prevent_duplicate_phone_trigger
+BEFORE INSERT OR UPDATE ON client
+FOR EACH ROW
+EXECUTE FUNCTION prevent_duplicate_phone();
+
+-- Пробуем вставить дубликат
+INSERT INTO client (full_name, phone_number, email, driver_license) 
+VALUES (
+    'Пушкин Александр Сергеевич',
+    (SELECT phone_number FROM client WHERE id = 1), 
+    'duplicate@test.ru',
+    '77XX000001'
+);
+
+
+--1.3
+CREATE OR REPLACE FUNCTION log_email_change()
+RETURNS TRIGGER AS $$
+BEGIN
+    RAISE NOTICE 'Клиент % изменил email с % на %', OLD.full_name, OLD.email, NEW.email;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER email_change_trigger
+BEFORE UPDATE OF email ON client
+FOR EACH ROW
+WHEN (OLD.email IS DISTINCT FROM NEW.email)
+EXECUTE FUNCTION log_email_change();
+
+SELECT id, full_name, email FROM client WHERE id = 1;
+
+UPDATE client SET email = 'test_new_email@mail.ru' WHERE id = 1;
+
+SELECT id, full_name, email FROM client WHERE id = 1;
+
+--1.6
+CREATE OR REPLACE FUNCTION check_car_year()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF NEW.year > EXTRACT(YEAR FROM CURRENT_DATE) THEN
+        RAISE EXCEPTION 'Год выпуска не может быть больше текущего!';
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER before_insert_car_year
+BEFORE INSERT OR UPDATE ON car
+FOR EACH ROW
+EXECUTE FUNCTION check_car_year();
+
+INSERT INTO car (vin, year, license_plate, color, model_id) 
+VALUES ('TESTVIN123456789', 2030, 'А999АА777', 'Черный', 1);
+
+INSERT INTO car (vin, year, license_plate, color, model_id) 
+VALUES ('TESTVIN123456789', 2024, 'А999АА777', 'Черный', 1);
+
+--1.9
+CREATE OR REPLACE FUNCTION set_completion_date()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF NEW.status = 'выполнен' AND OLD.status != 'выполнен' THEN
+        NEW.completion_date := CURRENT_TIMESTAMP;
+        RAISE NOTICE 'Заказ ID % выполнен. Дата выполнения: %', NEW.id, NEW.completion_date;
+    
+    ELSIF OLD.status = 'выполнен' AND NEW.status != 'выполнен' THEN
+        NEW.completion_date := NULL;
+        RAISE NOTICE 'Заказ ID % больше не выполнен. Дата выполнения сброшена.', NEW.id;
+    END IF;
+    
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS before_order_status_update ON client_order;
+CREATE TRIGGER before_order_status_update
+BEFORE UPDATE OF status ON client_order
+FOR EACH ROW
+EXECUTE FUNCTION set_completion_date();
+
+SELECT id, status, completion_date FROM client_order WHERE id = 2;
+
+UPDATE client_order SET status = 'выполнен' WHERE id = 2;
+
+SELECT id, status, completion_date FROM client_order WHERE id = 2;
+
+--1.12
+CREATE OR REPLACE FUNCTION log_mass_delete()
+RETURNS TRIGGER AS $$
+DECLARE
+    deleted_count INTEGER;
+BEGIN
+    GET DIAGNOSTICS deleted_count = ROW_COUNT;
+    
+    RAISE NOTICE 'Операция: %, Таблица: %, Затронуто строк: %', 
+        TG_OP, TG_TABLE_NAME, deleted_count;
+    
+    RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS after_mass_delete_client_order ON client_order;
+CREATE TRIGGER after_mass_delete_client_order
+AFTER DELETE ON client_order
+FOR EACH STATEMENT
+EXECUTE FUNCTION log_mass_delete();
+
+SELECT id, status, created_date FROM client_order co ;
+
+DELETE FROM client_order 
+WHERE status = '' 
+AND created_date < '2024-01-01';
+
+-- Аделины
+CREATE OR REPLACE FUNCTION check_is_clients_car()
+RETURNS TRIGGER AS $$
+DECLARE 
+    is_clients_car BOOLEAN;
+BEGIN
+    SELECT EXISTS(
+        SELECT 1 FROM car_client 
+        WHERE car_id = NEW.id_car AND client_id=NEW.id_client) 
+    INTO is_clients_car;
+    
+    IF NOT is_clients_car THEN 
+        RAISE EXCEPTION 'Автомобиль не привязан к данному клиенту';
+    END IF;
+    
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;  
+
+CREATE TRIGGER validate_client_order
+BEFORE INSERT OR UPDATE ON client_order
+FOR EACH ROW 
+EXECUTE FUNCTION check_is_clients_car();
+
+CREATE OR REPLACE FUNCTION create_loyalty_card()
+RETURNS TRIGGER AS $$
+DECLARE 
+BEGIN
+    INSERT INTO loyalty_card 
+        (id_client)
+    VALUES 
+        (NEW.id);
+    
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;  
+
+CREATE TRIGGER create_client
+AFTER INSERT OR UPDATE ON client
+FOR EACH ROW 
+EXECUTE FUNCTION create_loyalty_card();
+
+CREATE OR REPLACE FUNCTION check_max_created_orders()
+    RETURNS TRIGGER AS $$
+DECLARE
+    max_created_orders INTEGER := 10;
+BEGIN
+    IF (SELECT COUNT(*) FROM client_order WHERE status = 'создан') > max_created_orders THEN
+        RAISE EXCEPTION 'Максимум % заказов со статусом "создан"', max_created_orders;
+    END IF;
+    RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER check_max_created_orders
+    AFTER INSERT OR UPDATE ON client_order
+    FOR EACH STATEMENT 
+EXECUTE FUNCTION check_max_created_orders();
+
+CREATE OR REPLACE FUNCTION log_client_order_status()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF OLD.status IS DISTINCT FROM NEW.status THEN
+        INSERT INTO client_order_status_log (order_id, status)
+        VALUES (NEW.id, NEW.status);
+    END IF;
+    
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER change_client_order_status
+AFTER UPDATE ON client_order
+FOR EACH ROW 
+EXECUTE FUNCTION log_client_order_status();
+-- 2.1
+SELECT DISTINCT
+    trigger_name,
+    event_object_table as table_name
+FROM information_schema.triggers
+WHERE trigger_schema = 'public'
+ORDER BY event_object_table, trigger_name;
+-- 3.3
+
+
