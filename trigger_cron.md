@@ -166,8 +166,8 @@ DELETE FROM client_order
 WHERE status = '' 
 AND created_date < '2024-01-01';
 ```
-![Скриншот](screenshots6/1.12.1png)
-![Скриншот](screenshots6/1.12.2png)
+![Скриншот](screenshots6/1.12.1.png)
+![Скриншот](screenshots6/1.12.2.png)
 
 ## 2. Отображение списка триггеров
 2.1.
