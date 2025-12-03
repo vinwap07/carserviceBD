@@ -396,7 +396,7 @@ VALUES
 ```
 ![Скриншот](screenshots6/1.11.png)
 
-1.12.
+1.12. Логирование факта массового удаления записей из client_order
 ``` sql
 CREATE OR REPLACE FUNCTION log_mass_delete()
 RETURNS TRIGGER AS $$
@@ -450,9 +450,13 @@ SELECT cron.shelude(
 ```
 ![Скриншот](screenshots6/3.1.png)
 
-3.2.
+3.2. Очистка старых логирований каждый день в 00:00
 ``` sql
-
+SELECT cron.schedule(
+    'clean_old_logs',
+    '0 0 * * *',
+    $$DELETE FROM error_logs WHERE created_at < NOW() - INTERVAL '30 days'$$
+);
 ```
 ![Скриншот](screenshots6/3.2.png)
 
@@ -483,6 +487,6 @@ ORDER BY start_time DESC;
 ### Запрос на просмотр кронов:
 3.5
 ``` sql
-
+SELECT * FROM cron.job;
 ```
 ![Скриншот](screenshots6/3.5.png)
