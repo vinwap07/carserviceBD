@@ -18,7 +18,6 @@ $$;
 CALL update_emloyee_status(1, 'отпуск'::employee_status);
 ```
 ![Скриншот](screenshots5/1.1.png)
-
 1.2. Оформление заказа
 ``` sql
 CREATE OR REPLACE PROCEDURE create_car_service_order(
