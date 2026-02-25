@@ -396,7 +396,7 @@ VALUES
 ```
 ![Скриншот](screenshots6/1.11.png)
 
-1.12.
+1.12. Логирование факта массового удаления записей из client_order
 ``` sql
 CREATE OR REPLACE FUNCTION log_mass_delete()
 RETURNS TRIGGER AS $$
@@ -448,19 +448,30 @@ SELECT cron.shelude(
     'UPDATE loyalty_card SET points_balance = points_balance + 500'
 );
 ```
-![Скриншот](screenshots6/3.1.png)
 
-3.2.
+3.2. Очистка старых логирований каждый день в 00:00
 ``` sql
-
+SELECT cron.schedule(
+    'clean_old_logs',
+    '0 0 * * *',
+    $$DELETE FROM error_logs WHERE created_at < NOW() - INTERVAL '30 days'$$
+);
 ```
-![Скриншот](screenshots6/3.2.png)
 
-3.3.
+3.3. Ежедневная проверка истекших карт лояльности
 ``` sql
-
+SELECT cron.schedule(
+	'daily_loyalty_check',
+	'0 0 * * *'
+	$$
+	-- Если карта зарегистрирована больше 2 лет назад и нет посещений больше года - деактивируем
+	UPDATE loyalty_card 
+	SET points_balance = 0
+	WHERE registration_date < CURRENT_DATE - INTERVAL '2 years'
+	AND (last_visit_date IS NULL OR last_visit_date < CURRENT_DATE - INTERVAL '1 year');
+	$$
+);
 ```
-![Скриншот](screenshots6/3.3.png)
 
 ### Запрос на просмотр выполнения кронов:
 3.4
@@ -468,11 +479,9 @@ SELECT cron.shelude(
 SELECT * FROM cron.job_run_details
 ORDER BY start_time DESC;
 ```
-![Скриншот](screenshots6/3.4.png)
 
 ### Запрос на просмотр кронов:
 3.5
 ``` sql
-
+SELECT * FROM cron.job;
 ```
-![Скриншот](screenshots6/3.5.png)
