@@ -1,4 +1,4 @@
-CREATE ROLE client_dev LOGIN PASSWORD 'client_dev_pass';
+REATE ROLE client_dev LOGIN PASSWORD 'client_dev_pass';
 
 CREATE ROLE watcher LOGIN PASSWORD 'watcher_pass';
 
