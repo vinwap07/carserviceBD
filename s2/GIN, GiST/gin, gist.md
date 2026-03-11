@@ -222,3 +222,65 @@ WHERE rating > 4.80;
 С индексом: 
 
 ![](2_5_2.png)
+
+
+# JOIN 
+
+## 1 запрос
+``` sql 
+EXPLAIN ANALYSE
+SELECT full_name 
+FROM client JOIN client_order ON client.id = client_order.id_client;
+```
+![](3_1.png)
+
+## 2 запрос
+``` sql 
+EXPLAIN ANALYSE
+SELECT full_name 
+FROM client JOIN client_order ON client.client_status = client_order.employee_id;
+```
+
+![](3_2.png)
+
+## 3 запрос
+``` sql 
+EXPLAIN ANALYSE
+SELECT full_name 
+FROM client JOIN client_order ON client.age = client_order.employee_id * 10;
+```
+
+![](3_3.png)
+
+Добавила индекс: 
+``` sql 
+CREATE INDEX idx_age ON client(age);
+```
+
+И запрос ускорился: 
+![](3_3_2.png)
+
+## 4 запрос
+``` sql 
+EXPLAIN ANALYSE
+SELECT full_name 
+FROM client JOIN car ON client.age * 1000 = car.mileage;
+```
+
+![](3_4.png)
+
+Добавила индексы: 
+``` sql 
+CREATE INDEX idx_status ON client(age);
+CREATE INDEX idx_mileage ON car(mileage);
+```
+
+И запрос ускорился: 
+![](3_4_2.png)
+## 5 запрос
+
+``` sql 
+
+```
+
+![](3_5.png)
