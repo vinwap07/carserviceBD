@@ -30,8 +30,50 @@ services:
         condition: service_healthy
     networks:
       - autoservice_net
+  
+  postgres_replica1:
+    image: postgres:15
+    container_name: autoservice-postgres-replica1
+    user: postgres
+    environment:
+      POSTGRES_PASSWORD: replicatorpass
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_replica1_data:/var/lib/postgresql/data
+    networks:
+      - autoservice_net
+    command: |
+      bash -c "
+        until pg_isready -h autoservice-postgres -U replicator; do sleep 2; done &&
+        rm -rf /var/lib/postgresql/data/* &&
+        PGPASSWORD=replicatorpass pg_basebackup -h autoservice-postgres -D /var/lib/postgresql/data -U replicator -P -R &&
+        exec postgres
+      "
+
+  postgres_replica2:
+    image: postgres:15
+    container_name: autoservice-postgres-replica2
+    user: postgres
+    environment:
+      POSTGRES_PASSWORD: replicatorpass
+    ports:
+      - "5434:5432"
+    volumes:
+      - postgres_replica2_data:/var/lib/postgresql/data
+    networks:
+      - autoservice_net
+    command: |
+      bash -c "
+        until pg_isready -h autoservice-postgres -U replicator; do sleep 2; done &&
+        rm -rf /var/lib/postgresql/data/* &&
+        PGPASSWORD=replicatorpass pg_basebackup -h autoservice-postgres -D /var/lib/postgresql/data -U replicator -P -R &&
+        exec postgres
+      "
 
 volumes:
+  postgres_replica1_data:
+  postgres_replica2_data:
   postgres_data:
 
 networks:
