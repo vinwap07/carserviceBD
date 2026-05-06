@@ -51,25 +51,20 @@ services:
         exec postgres
       "
 
-  postgres_replica2:
-    image: postgres:15
-    container_name: autoservice-postgres-replica2
-    user: postgres
-    environment:
-      POSTGRES_PASSWORD: replicatorpass
-    ports:
-      - "5434:5432"
-    volumes:
-      - postgres_replica2_data:/var/lib/postgresql/data
-    networks:
-      - autoservice_net
-    command: |
-      bash -c "
-        until pg_isready -h autoservice-postgres -U replicator; do sleep 2; done &&
-        rm -rf /var/lib/postgresql/data/* &&
-        PGPASSWORD=replicatorpass pg_basebackup -h autoservice-postgres -D /var/lib/postgresql/data -U replicator -P -R &&
-        exec postgres
-      "
+postgres_replica2:
+  image: postgres:15
+  container_name: autoservice-postgres-replica2
+  user: postgres
+  environment:
+    POSTGRES_PASSWORD: replicatorpass
+  ports:
+    - "5434:5432"
+  volumes:
+    - postgres_replica2_data:/var/lib/postgresql/data
+  networks:
+    - autoservice_net
+  # временно — без репликации, чтобы посмотреть права
+  command: tail -f /dev/null
 
 volumes:
   postgres_replica1_data:
